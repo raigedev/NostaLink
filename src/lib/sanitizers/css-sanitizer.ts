@@ -1,3 +1,10 @@
+// Allow URLs from the configured Supabase storage domain; falls back to the
+// generic *.supabase.co pattern so both project-specific and legacy URLs work.
+const supabaseHost =
+  process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.replace(/\./g, "\\.")
+    : "[a-z0-9-]+\\.supabase\\.co";
+
 const BLOCKED_CSS_PATTERNS = [
   /expression\s*\(/gi,
   /javascript\s*:/gi,
@@ -6,7 +13,7 @@ const BLOCKED_CSS_PATTERNS = [
   /behavior\s*:/gi,
   /-moz-binding/gi,
   /-webkit-binding/gi,
-  /url\s*\(\s*(?!['"]?https:\/\/[a-z]+\.supabase\.co)/gi,
+  new RegExp(`url\\s*\\(\\s*(?!['"]?https://${supabaseHost})`, "gi"),
   /position\s*:\s*fixed/gi,
   /z-index\s*:\s*(\d{5,})/gi,
   /cursor\s*:\s*none/gi,

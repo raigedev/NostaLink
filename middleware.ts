@@ -14,50 +14,12 @@ const PROTECTED_ROUTES = [
   "/search",
 ];
 
-// In-memory brute-force tracker (resets on cold start; fine for edge use)
-// Key: IP address, Value: { count: number; firstSeen: number; lockedUntil?: number }
-const loginAttempts = new Map<
-  string,
-  { count: number; firstSeen: number; lockedUntil?: number }
->();
-
-const BRUTE_FORCE_MAX_ATTEMPTS = 10;
-const BRUTE_FORCE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const BRUTE_FORCE_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
-
 function getClientIp(request: NextRequest): string {
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
     "unknown"
   );
-}
-
-function isIpLockedOut(ip: string): boolean {
-  const record = loginAttempts.get(ip);
-  if (!record) return false;
-  if (record.lockedUntil && Date.now() < record.lockedUntil) return true;
-  return false;
-}
-
-function recordFailedLogin(ip: string) {
-  const now = Date.now();
-  const record = loginAttempts.get(ip);
-
-  if (!record || now - record.firstSeen > BRUTE_FORCE_WINDOW_MS) {
-    loginAttempts.set(ip, { count: 1, firstSeen: now });
-    return;
-  }
-
-  record.count += 1;
-  if (record.count >= BRUTE_FORCE_MAX_ATTEMPTS) {
-    record.lockedUntil = now + BRUTE_FORCE_LOCKOUT_MS;
-  }
-  loginAttempts.set(ip, record);
-}
-
-function clearLoginAttempts(ip: string) {
-  loginAttempts.delete(ip);
 }
 
 export async function middleware(request: NextRequest) {
@@ -69,29 +31,37 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const ip = getClientIp(request);
 
-  // Check brute-force lockout for login attempts
-  if (pathname === "/login" || pathname === "/api/auth/login") {
-    if (isIpLockedOut(ip)) {
-      return new NextResponse(
-        JSON.stringify({
-          error: {
-            message:
-              "Too many failed login attempts. Please try again in 15 minutes.",
-            code: "ACCOUNT_LOCKED",
-          },
-        }),
-        { status: 429, headers: { "Content-Type": "application/json" } }
-      );
+  // Brute force protection: check IP-based login rate limit via the DB-backed
+  // rate_limits table (persists across serverless cold starts).
+  if (pathname === "/login" || pathname.startsWith("/api/auth/")) {
+    const windowStart = new Date(
+      Math.floor(Date.now() / (15 * 60 * 1000)) * 15 * 60 * 1000
+    ).toISOString();
+
+    try {
+      const { data: rlRecord } = await supabase
+        .from("rate_limits")
+        .select("request_count")
+        .eq("identifier", `ip:${ip}`)
+        .eq("action", "login_attempt")
+        .eq("window_start", windowStart)
+        .single();
+
+      if (rlRecord && rlRecord.request_count >= 10) {
+        return new NextResponse(
+          JSON.stringify({
+            error: {
+              message:
+                "Too many failed login attempts. Please try again in 15 minutes.",
+              code: "ACCOUNT_LOCKED",
+            },
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    } catch {
+      // Fail open if rate limit table is unavailable
     }
-  }
-
-  // Track failed auth attempts via a request header set by the login action
-  if (request.headers.get("x-auth-failed") === "1") {
-    recordFailedLogin(ip);
-  }
-
-  if (request.headers.get("x-auth-success") === "1") {
-    clearLoginAttempts(ip);
   }
 
   const {

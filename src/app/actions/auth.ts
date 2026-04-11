@@ -94,11 +94,11 @@ export async function resetPassword(formData: FormData) {
 export async function updatePassword(formData: FormData) {
   const supabase = await createClient();
 
-  let user;
+  let userId: string;
   try {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw new Error("Unauthorized");
-    user = data.user;
+    userId = data.user.id;
   } catch {
     return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
   }
@@ -113,7 +113,7 @@ export async function updatePassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: "Failed to update password" };
 
-  void user; // user is verified above
+  void userId; // confirms the user was authenticated before updating
   return { success: true };
 }
 

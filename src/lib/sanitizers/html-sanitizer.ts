@@ -48,60 +48,67 @@ const ALLOWED_URI_REGEXP = /^(?:(?:https?):\/\/|mailto:|tel:|#)/i;
 
 const ALLOWED_IFRAME_HOSTS = ["www.youtube.com", "open.spotify.com"];
 
-function postProcessIframes(html: string, allowedHosts: string[]): string {
-  // Replace any iframes whose src doesn't match the allowed hosts
-  return html.replace(/<iframe[^>]*>/gi, (tag) => {
-    const srcMatch = tag.match(/src\s*=\s*["']([^"']+)["']/i);
-    if (!srcMatch) return "";
-    try {
-      const url = new URL(srcMatch[1]);
-      if (allowedHosts.includes(url.hostname)) return tag;
-    } catch {
-      // invalid URL
-    }
-    return "";
-  });
+function isAllowedIframeSrc(src: string): boolean {
+  try {
+    const url = new URL(src);
+    return ALLOWED_IFRAME_HOSTS.includes(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function sanitizeProfileHtml(dirty: string): string {
-  const clean = DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR: ALLOWED_ATTRS,
-    ALLOWED_URI_REGEXP,
-    ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: [
-      "script",
-      "style",
-      "link",
-      "meta",
-      "object",
-      "embed",
-      "form",
-      "input",
-      "textarea",
-      "select",
-      "button",
-      "base",
-      "applet",
-    ],
-    FORBID_ATTR: [
-      "onerror",
-      "onclick",
-      "onload",
-      "onmouseover",
-      "onfocus",
-      "onblur",
-      "onsubmit",
-      "onreset",
-      "onchange",
-      "oninput",
-      "onkeydown",
-      "onkeyup",
-      "onkeypress",
-    ],
-    WHOLE_DOCUMENT: false,
-    RETURN_DOM: false,
-  } as Parameters<typeof DOMPurify.sanitize>[1]);
+  // Use DOMPurify's afterSanitizeAttributes hook to validate iframe src at the
+  // DOM level — avoiding any regex-based HTML manipulation.
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.nodeName === "IFRAME") {
+      const src = node.getAttribute("src") ?? "";
+      if (!isAllowedIframeSrc(src)) {
+        node.parentNode?.removeChild(node);
+      }
+    }
+  });
 
-  return postProcessIframes(clean, ALLOWED_IFRAME_HOSTS);
+  try {
+    return DOMPurify.sanitize(dirty, {
+      ALLOWED_TAGS,
+      ALLOWED_ATTR: ALLOWED_ATTRS,
+      ALLOWED_URI_REGEXP,
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: [
+        "script",
+        "style",
+        "link",
+        "meta",
+        "object",
+        "embed",
+        "form",
+        "input",
+        "textarea",
+        "select",
+        "button",
+        "base",
+        "applet",
+      ],
+      FORBID_ATTR: [
+        "onerror",
+        "onclick",
+        "onload",
+        "onmouseover",
+        "onfocus",
+        "onblur",
+        "onsubmit",
+        "onreset",
+        "onchange",
+        "oninput",
+        "onkeydown",
+        "onkeyup",
+        "onkeypress",
+      ],
+      WHOLE_DOCUMENT: false,
+      RETURN_DOM: false,
+    } as Parameters<typeof DOMPurify.sanitize>[1]);
+  } finally {
+    DOMPurify.removeHook("afterSanitizeAttributes");
+  }
 }
