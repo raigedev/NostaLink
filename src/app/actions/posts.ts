@@ -23,21 +23,44 @@ export interface Post {
 
 export async function createPost(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const content = formData.get("content") as string;
   const privacy = (formData.get("privacy") as string) || "public";
+  const groupId = formData.get("group_id") as string | null;
 
   if (!content?.trim()) return { error: "Content is required" };
+
+  // If posting to a group, verify membership
+  if (groupId) {
+    const { data: membership } = await supabase
+      .from("group_members")
+      .select("user_id")
+      .eq("group_id", groupId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (!membership) {
+      return { error: "You must be a member of this group to post in it" };
+    }
+  }
 
   const { error } = await supabase.from("posts").insert({
     author_id: user.id,
     content: content.trim(),
     privacy,
+    group_id: groupId || null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to create post" };
   revalidatePath("/");
   return { success: true };
 }
@@ -65,8 +88,15 @@ export async function getPost(id: string): Promise<Post | null> {
 
 export async function deletePost(id: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("posts")
@@ -74,16 +104,22 @@ export async function deletePost(id: string) {
     .eq("id", id)
     .eq("author_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to delete post" };
   revalidatePath("/");
   return { success: true };
 }
 
 export async function getFeedPosts(limit = 20, offset = 0): Promise<Post[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return getPosts(limit, offset);
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return getPosts(limit, offset);
+  }
 
   const { data } = await supabase
     .from("posts")

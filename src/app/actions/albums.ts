@@ -22,8 +22,15 @@ export interface Photo {
 
 export async function createAlbum(name: string, description?: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { data, error } = await supabase
     .from("albums")
@@ -31,7 +38,7 @@ export async function createAlbum(name: string, description?: string) {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to create album" };
   revalidatePath("/albums");
   return { album: data as Album };
 }
@@ -63,8 +70,26 @@ export async function getAlbum(id: string): Promise<{ album: Album; photos: Phot
 
 export async function uploadPhoto(albumId: string, url: string, caption?: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
+
+  // Verify the album belongs to the user before adding photos
+  const { data: album } = await supabase
+    .from("albums")
+    .select("user_id")
+    .eq("id", albumId)
+    .single();
+
+  if (!album || album.user_id !== user.id) {
+    return { error: "Album not found or access denied" };
+  }
 
   const { error } = await supabase.from("photos").insert({
     album_id: albumId,
@@ -73,15 +98,22 @@ export async function uploadPhoto(albumId: string, url: string, caption?: string
     caption,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to upload photo" };
   revalidatePath(`/albums/${albumId}`);
   return { success: true };
 }
 
 export async function deletePhoto(photoId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("photos")
@@ -89,6 +121,6 @@ export async function deletePhoto(photoId: string) {
     .eq("id", photoId)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to delete photo" };
   return { success: true };
 }

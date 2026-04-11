@@ -20,9 +20,9 @@ function SubmitButton() {
 
 export default function ForgotPasswordPage() {
   const [state, formAction] = useActionState(
-    async (_prev: { error?: string; success?: boolean } | null, formData: FormData) => {
+    async (_prev: { error?: string; success?: boolean; message?: string } | null, formData: FormData) => {
       const result = await resetPassword(formData);
-      return result;
+      return result as { error?: string; success?: boolean; message?: string };
     },
     null
   );
