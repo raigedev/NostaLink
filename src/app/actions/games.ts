@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { auditSuspiciousGameScore } from "@/lib/security/audit-logger";
 
 export interface Game {
   id: string;
@@ -9,6 +10,7 @@ export interface Game {
   name: string;
   description: string;
   thumbnail_url: string | null;
+  max_possible_score?: number | null;
 }
 
 export interface GameScore {
@@ -28,8 +30,41 @@ export async function getGames(): Promise<Game[]> {
 
 export async function submitScore(gameId: string, score: number) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
+
+  if (typeof score !== "number" || !isFinite(score) || score < 0) {
+    return { error: "Invalid score" };
+  }
+
+  // Validate score against the game's max_possible_score
+  const { data: game } = await supabase
+    .from("games")
+    .select("id, max_possible_score")
+    .eq("id", gameId)
+    .single();
+
+  if (!game) return { error: "Game not found" };
+
+  if (
+    game.max_possible_score != null &&
+    score > game.max_possible_score
+  ) {
+    await auditSuspiciousGameScore(
+      user.id,
+      gameId,
+      score,
+      game.max_possible_score
+    );
+    return { error: "Score exceeds maximum possible score for this game" };
+  }
 
   const { error } = await supabase.from("game_scores").insert({
     game_id: gameId,
@@ -37,7 +72,7 @@ export async function submitScore(gameId: string, score: number) {
     score,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to submit score" };
   revalidatePath("/games");
   return { success: true };
 }
@@ -55,8 +90,15 @@ export async function getLeaderboard(gameId: string, limit = 10): Promise<GameSc
 
 export async function sendGameInvite(gameId: string, toUserId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase.from("game_invites").insert({
     game_id: gameId,
@@ -65,6 +107,6 @@ export async function sendGameInvite(gameId: string, toUserId: string) {
     status: "pending",
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to send game invite" };
   return { success: true };
 }

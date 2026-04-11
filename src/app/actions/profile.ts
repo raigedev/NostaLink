@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeCSS, sanitizeHTML } from "@/lib/sanitize";
+import { sanitizeProfileCss } from "@/lib/sanitizers/css-sanitizer";
+import { sanitizeProfileHtml } from "@/lib/sanitizers/html-sanitizer";
 
 export interface Profile {
   id: string;
@@ -43,8 +44,15 @@ export async function getProfile(username: string): Promise<Profile | null> {
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const updates: Record<string, unknown> = {
     display_name: formData.get("display_name"),
@@ -62,7 +70,7 @@ export async function updateProfile(formData: FormData) {
     .update(updates)
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to update profile" };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -87,13 +95,24 @@ export async function updateProfileCustomization(data: {
   top_friends?: string[];
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data: authData, error } = await supabase.auth.getUser();
+    if (error || !authData.user) throw new Error("Unauthorized");
+    user = authData.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const sanitized = {
     ...data,
-    custom_css: data.custom_css ? sanitizeCSS(data.custom_css) : data.custom_css,
-    custom_html: data.custom_html ? sanitizeHTML(data.custom_html) : data.custom_html,
+    custom_css: data.custom_css
+      ? sanitizeProfileCss(data.custom_css, user.id)
+      : data.custom_css,
+    custom_html: data.custom_html
+      ? sanitizeProfileHtml(data.custom_html)
+      : data.custom_html,
     updated_at: new Date().toISOString(),
   };
 
@@ -102,7 +121,7 @@ export async function updateProfileCustomization(data: {
     .update(sanitized)
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to update profile customization" };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -116,14 +135,21 @@ export async function updateProfileCustomization(data: {
 
 export async function updateAvatar(url: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("profiles")
     .update({ avatar_url: url, updated_at: new Date().toISOString() })
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to update avatar" };
   return { success: true };
 }

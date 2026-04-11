@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
+const MAX_PENDING_FRIEND_REQUESTS = 50;
+
 export interface Friendship {
   id: string;
   requester_id: string;
@@ -14,9 +16,30 @@ export interface Friendship {
 
 export async function sendFriendRequest(addresseeId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
+
   if (user.id === addresseeId) return { error: "Cannot friend yourself" };
+
+  // Enforce max 50 pending outgoing requests
+  const { count } = await supabase
+    .from("friendships")
+    .select("*", { count: "exact", head: true })
+    .eq("requester_id", user.id)
+    .eq("status", "pending");
+
+  if ((count ?? 0) >= MAX_PENDING_FRIEND_REQUESTS) {
+    return {
+      error: `You have reached the maximum of ${MAX_PENDING_FRIEND_REQUESTS} pending friend requests`,
+    };
+  }
 
   const { error } = await supabase.from("friendships").insert({
     requester_id: user.id,
@@ -24,15 +47,22 @@ export async function sendFriendRequest(addresseeId: string) {
     status: "pending",
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to send friend request" };
   revalidatePath("/friends");
   return { success: true };
 }
 
 export async function acceptFriendRequest(friendshipId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("friendships")
@@ -40,15 +70,22 @@ export async function acceptFriendRequest(friendshipId: string) {
     .eq("id", friendshipId)
     .eq("addressee_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to accept friend request" };
   revalidatePath("/friends");
   return { success: true };
 }
 
 export async function declineFriendRequest(friendshipId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("friendships")
@@ -56,15 +93,22 @@ export async function declineFriendRequest(friendshipId: string) {
     .eq("id", friendshipId)
     .eq("addressee_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to decline friend request" };
   revalidatePath("/friends");
   return { success: true };
 }
 
 export async function removeFriend(friendshipId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
 
   const { error } = await supabase
     .from("friendships")
@@ -72,7 +116,7 @@ export async function removeFriend(friendshipId: string) {
     .eq("id", friendshipId)
     .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to remove friend" };
   revalidatePath("/friends");
   return { success: true };
 }
@@ -97,8 +141,15 @@ export async function getFriends(userId?: string) {
 
 export async function getPendingRequests() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return [];
+  }
 
   const { data } = await supabase
     .from("friendships")

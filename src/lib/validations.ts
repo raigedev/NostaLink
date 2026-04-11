@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { passwordSchema } from "@/lib/validators/auth";
+
+export { passwordSchema };
 
 export const registerSchema = z.object({
   username: z
@@ -8,10 +11,7 @@ export const registerSchema = z.object({
     .regex(/^[a-z0-9_]+$/, "Username can only contain lowercase letters, numbers, and underscores"),
   display_name: z.string().min(1, "Display name is required").max(50),
   email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(100),
+  password: passwordSchema,
 });
 
 export const loginSchema = z.object({

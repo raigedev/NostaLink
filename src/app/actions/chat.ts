@@ -20,8 +20,15 @@ export interface Message {
 
 export async function getConversations(): Promise<Conversation[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return [];
+  }
 
   const { data } = await supabase
     .from("conversation_members")
@@ -40,6 +47,26 @@ export async function getConversations(): Promise<Conversation[]> {
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const supabase = await createClient();
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return [];
+  }
+
+  // Verify user is a member of this conversation
+  const { data: membership } = await supabase
+    .from("conversation_members")
+    .select("user_id")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) return [];
+
   const { data } = await supabase
     .from("messages")
     .select(`*, sender:profiles!sender_id(username, display_name, avatar_url)`)
@@ -50,8 +77,27 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
 export async function sendMessage(conversationId: string, content: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
+
+  // Verify user is a member of this conversation before sending
+  const { data: membership } = await supabase
+    .from("conversation_members")
+    .select("user_id")
+    .eq("conversation_id", conversationId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership) {
+    return { error: "You are not a member of this conversation" };
+  }
 
   const { error } = await supabase.from("messages").insert({
     conversation_id: conversationId,
@@ -59,14 +105,25 @@ export async function sendMessage(conversationId: string, content: string) {
     content: content.trim(),
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Failed to send message" };
   return { success: true };
 }
 
 export async function createConversation(otherUserId: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+
+  let user;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error("Unauthorized");
+    user = data.user;
+  } catch {
+    return { error: "Unauthorized", code: "UNAUTHORIZED", status: 401 };
+  }
+
+  if (user.id === otherUserId) {
+    return { error: "Cannot create a conversation with yourself" };
+  }
 
   const { data: conv, error: convError } = await supabase
     .from("conversations")
@@ -74,7 +131,7 @@ export async function createConversation(otherUserId: string) {
     .select()
     .single();
 
-  if (convError || !conv) return { error: convError?.message ?? "Failed to create conversation" };
+  if (convError || !conv) return { error: "Failed to create conversation" };
 
   await supabase.from("conversation_members").insert([
     { conversation_id: conv.id, user_id: user.id },
