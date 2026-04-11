@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/* ── Base ─────────────────────────────────────────────────────── */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --accent-1: #6366f1;
+  --accent-2: #8b5cf6;
+  --border-color: #e5e7eb;
+  --card-bg: #ffffff;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+/* ── Themes ───────────────────────────────────────────────────── */
+.theme-y2k {
+  --bg-primary: #ffe4f0;
+  --bg-secondary: #fff0f8;
+  --text-primary: #cc0066;
+  --text-secondary: #9900cc;
+  --accent-1: #ff69b4;
+  --accent-2: #00ffff;
+  --border-color: #ff99cc;
+  --card-bg: #fff5fb;
+}
+
+.theme-emo {
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #1a1a1a;
+  --text-primary: #f0f0f0;
+  --text-secondary: #bbbbbb;
+  --accent-1: #8b0000;
+  --accent-2: #cc0000;
+  --border-color: #333333;
+  --card-bg: #1a1a1a;
+}
+
+.theme-scene {
+  --bg-primary: #0a0010;
+  --bg-secondary: #110020;
+  --text-primary: #ffffff;
+  --text-secondary: #cc99ff;
+  --accent-1: #ff6600;
+  --accent-2: #cc00ff;
+  --border-color: #660099;
+  --card-bg: #1a0033;
+}
+
+.theme-pastel {
+  --bg-primary: #fdf0f5;
+  --bg-secondary: #f0f5ff;
+  --text-primary: #4a3f5c;
+  --text-secondary: #7a6a8a;
+  --accent-1: #f4a7b9;
+  --accent-2: #b5c8f0;
+  --border-color: #e8d5e8;
+  --card-bg: #fff8fc;
+}
+
+.theme-dark {
+  --bg-primary: #121212;
+  --bg-secondary: #1e1e1e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaaaaa;
+  --accent-1: #bb86fc;
+  --accent-2: #03dac6;
+  --border-color: #333333;
+  --card-bg: #1e1e1e;
+}
+
+.theme-neon {
+  --bg-primary: #060606;
+  --bg-secondary: #0d0d0d;
+  --text-primary: #00ff41;
+  --text-secondary: #00cc33;
+  --accent-1: #ff00ff;
+  --accent-2: #ffff00;
+  --border-color: #00ff41;
+  --card-bg: #0d0d0d;
+}
+
+.theme-grunge {
+  --bg-primary: #2a1f15;
+  --bg-secondary: #3d2b1f;
+  --text-primary: #e0c9a6;
+  --text-secondary: #b0957a;
+  --accent-1: #8b7355;
+  --accent-2: #c4a882;
+  --border-color: #5a4535;
+  --card-bg: #3d2b1f;
+}
+
+.theme-kawaii {
+  --bg-primary: #fff0f8;
+  --bg-secondary: #ffe0f5;
+  --text-primary: #cc3366;
+  --text-secondary: #996699;
+  --accent-1: #ff99cc;
+  --accent-2: #99ccff;
+  --border-color: #ffb3d9;
+  --card-bg: #fff8fc;
+}
+
+.theme-minimalist {
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafafa;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --accent-1: #222222;
+  --accent-2: #444444;
+  --border-color: #eeeeee;
+  --card-bg: #ffffff;
+}
+
+.theme-retro {
+  --bg-primary: #1a0533;
+  --bg-secondary: #2d0a5c;
+  --text-primary: #f7931e;
+  --text-secondary: #f0c060;
+  --accent-1: #6a0dad;
+  --accent-2: #ff6b35;
+  --border-color: #6a0dad;
+  --card-bg: #2d0a5c;
+}
+
+.theme-vaporwave {
+  --bg-primary: #1a0533;
+  --bg-secondary: #2d0a50;
+  --text-primary: #ff71ce;
+  --text-secondary: #01cdfe;
+  --accent-1: #b967ff;
+  --accent-2: #05ffa1;
+  --border-color: #b967ff;
+  --card-bg: #2d0a50;
+}
+
+.theme-cottagecore {
+  --bg-primary: #faf3e0;
+  --bg-secondary: #f5e6ca;
+  --text-primary: #5c4033;
+  --text-secondary: #7a5c45;
+  --accent-1: #8fbc8f;
+  --accent-2: #d2691e;
+  --border-color: #c4a882;
+  --card-bg: #fdf6e3;
+}
+
+/* ── Retro Hit Counter ────────────────────────────────────────── */
+.retro-digit {
+  display: inline-block;
+  background: #000;
+  color: #ff4400;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border: 2px inset #333;
+  border-radius: 2px;
+  min-width: 1.2ch;
+  text-align: center;
+  box-shadow: inset 0 0 4px #ff4400;
+  letter-spacing: 2px;
+}
+
+.retro-counter {
+  display: inline-flex;
+  gap: 2px;
+  background: #111;
+  border: 3px outset #666;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.3s ease forwards; }
+
+/* ── Profile Background Modes ────────────────────────────────── */
+.bg-mode-tiled { background-repeat: repeat; background-size: auto; }
+.bg-mode-stretched { background-size: 100% 100%; background-repeat: no-repeat; }
+.bg-mode-fixed { background-attachment: fixed; background-size: cover; }
+.bg-mode-parallax { background-attachment: fixed; background-size: cover; background-position: center; }
