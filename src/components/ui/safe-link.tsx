@@ -12,11 +12,11 @@ interface SafeLinkProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
 export function SafeLink({ href, children, className, ...rest }: SafeLinkProps) {
   // Only allow http/https/mailto/tel schemes
   const isSafe = /^(?:https?:\/\/|mailto:|tel:|#)/i.test(href);
-  const safehref = isSafe ? href : "#";
+  const safeHref = isSafe ? href : "#";
 
   return (
     <a
-      href={safehref}
+      href={safeHref}
       rel="noopener noreferrer nofollow"
       target="_blank"
       className={className}

@@ -1,9 +1,12 @@
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // Allow URLs from the configured Supabase storage domain; falls back to the
 // generic *.supabase.co pattern so both project-specific and legacy URLs work.
-const supabaseHost =
-  process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname.replace(/\./g, "\\.")
-    : "[a-z0-9-]+\\.supabase\\.co";
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? escapeRegex(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname)
+  : "[a-z0-9-]+\\.supabase\\.co";
 
 const BLOCKED_CSS_PATTERNS = [
   /expression\s*\(/gi,
