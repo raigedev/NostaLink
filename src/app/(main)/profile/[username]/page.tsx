@@ -36,11 +36,16 @@ export default async function ProfilePage({ params }: Props) {
   // Fetch degrees of connection for non-owners
   let degrees: number | null = null;
   if (user && !isOwner) {
-    const { data: degData } = await supabase.rpc("get_degrees_of_connection", {
-      user1_id: user.id,
-      user2_id: profile.id,
-    });
-    degrees = degData ?? null;
+    try {
+      const { data: degData } = await supabase.rpc("get_degrees_of_connection", {
+        user1_id: user.id,
+        user2_id: profile.id,
+      });
+      degrees = degData ?? null;
+    } catch (err) {
+      console.error("get_degrees_of_connection RPC error:", err);
+      degrees = null;
+    }
   }
 
   // Fetch top 8 friends data

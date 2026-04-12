@@ -28,7 +28,9 @@ export default function GuestbookWidget({ profileId }: Props) {
       .eq("profile_id", profileId)
       .order("created_at", { ascending: false })
       .limit(10)
-      .then(({ data }) => setEntries((data as Entry[]) ?? []));
+      .then(({ data, error }) => {
+        if (!error) setEntries((data as Entry[]) ?? []);
+      });
   }, [profileId]);
 
   async function submit(e: React.FormEvent) {
