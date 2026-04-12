@@ -6,6 +6,7 @@ export interface UploadConstraints {
 }
 
 // MIME type signatures (file magic bytes)
+// Note: WAV and WebP both start with RIFF; they are disambiguated after initial detection
 const MAGIC_BYTES: Record<string, Uint8Array[]> = {
   "image/jpeg": [new Uint8Array([0xff, 0xd8, 0xff])],
   "image/png": [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
@@ -13,7 +14,7 @@ const MAGIC_BYTES: Record<string, Uint8Array[]> = {
     new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x37, 0x61]),
     new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]),
   ],
-  "image/webp": [new Uint8Array([0x52, 0x49, 0x46, 0x46])],
+  // WebP: detected separately via RIFF disambiguation
   "audio/mpeg": [
     new Uint8Array([0xff, 0xfb]),
     new Uint8Array([0xff, 0xf3]),
@@ -21,7 +22,8 @@ const MAGIC_BYTES: Record<string, Uint8Array[]> = {
     new Uint8Array([0x49, 0x44, 0x33]), // ID3 tag
   ],
   "audio/ogg": [new Uint8Array([0x4f, 0x67, 0x67, 0x53])],
-  "audio/wav": [new Uint8Array([0x52, 0x49, 0x46, 0x46])],
+  // RIFF-based formats (WAV, WebP) are identified by their initial 4-byte tag
+  "riff": [new Uint8Array([0x52, 0x49, 0x46, 0x46])],
 };
 
 function startsWith(buffer: Uint8Array, magic: Uint8Array): boolean {
@@ -35,7 +37,17 @@ function startsWith(buffer: Uint8Array, magic: Uint8Array): boolean {
 export function detectMimeType(buffer: Uint8Array): string | null {
   for (const [mime, signatures] of Object.entries(MAGIC_BYTES)) {
     for (const sig of signatures) {
-      if (startsWith(buffer, sig)) return mime;
+      if (startsWith(buffer, sig)) {
+        if (mime === "riff") {
+          // Disambiguate RIFF-based formats by examining bytes 8-11
+          if (buffer.length < 12) return null;
+          const tag = String.fromCharCode(buffer[8], buffer[9], buffer[10], buffer[11]);
+          if (tag === "WAVE") return "audio/wav";
+          if (tag === "WEBP") return "image/webp";
+          return null; // Unknown RIFF format
+        }
+        return mime;
+      }
     }
   }
   return null;
@@ -71,34 +83,23 @@ export async function validateUpload(
     return { valid: false, error: `File exceeds ${limitMB}MB limit` };
   }
 
-  // Read first 12 bytes to detect MIME type
+  // Read first 12 bytes to detect MIME type from file magic bytes
   const headerBuffer = await file.slice(0, 12).arrayBuffer();
   const header = new Uint8Array(headerBuffer);
   const detectedMime = detectMimeType(header);
 
-  // For audio/wav and image/webp both start with RIFF — disambiguate by content-type hint
-  let resolvedMime = detectedMime;
-  if (detectedMime === "audio/wav" || detectedMime === "image/webp") {
-    // Both start with RIFF; check bytes 8-11 for WAVE vs WEBP
-    if (header.length >= 12) {
-      const tag = String.fromCharCode(header[8], header[9], header[10], header[11]);
-      if (tag === "WAVE") resolvedMime = "audio/wav";
-      else if (tag === "WEBP") resolvedMime = "image/webp";
-    }
-  }
-
-  if (!resolvedMime) {
+  if (!detectedMime) {
     return { valid: false, error: "Could not determine file type from content" };
   }
 
-  if (!constraints.allowedMimeTypes.includes(resolvedMime)) {
+  if (!constraints.allowedMimeTypes.includes(detectedMime)) {
     return {
       valid: false,
-      error: `File type ${resolvedMime} is not allowed. Accepted: ${constraints.allowedMimeTypes.join(", ")}`,
+      error: `File type ${detectedMime} is not allowed. Accepted: ${constraints.allowedMimeTypes.join(", ")}`,
     };
   }
 
-  return { valid: true, detectedMime: resolvedMime };
+  return { valid: true, detectedMime };
 }
 
 export const AVATAR_CONSTRAINTS: UploadConstraints = {

@@ -13,9 +13,9 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   // Block high z-index values (>9999)
   { pattern: /z-index\s*:\s*(?:[1-9]\d{4,}|\d{5,})/gi, label: "excessive z-index" },
   { pattern: /cursor\s*:\s*none/gi, label: "cursor:none" },
-  // Block external URLs except Supabase storage
+  // Block external URLs except Supabase storage - require the ENTIRE URL to be a Supabase storage URL
   {
-    pattern: /url\s*\(\s*['"]?(?!https:\/\/[a-zA-Z0-9-]+\.supabase\.co)[^)'"]*['"]?\s*\)/gi,
+    pattern: /url\s*\(\s*['"]?((?!https:\/\/[a-zA-Z0-9-]+\.supabase\.co\/storage\/)[^)'"]*?)['"]?\s*\)/gi,
     label: "external URL",
   },
 ];

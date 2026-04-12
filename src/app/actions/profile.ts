@@ -387,19 +387,9 @@ export async function incrementHitCount(profileId: string) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.rpc("increment_hit_count", { profile_id: profileId });
-  if (error) {
-    // Fallback: direct update if RPC doesn't exist
-    const { data: current } = await supabase
-      .from("profiles")
-      .select("hit_count")
-      .eq("id", profileId)
-      .single();
-    await supabase
-      .from("profiles")
-      .update({ hit_count: (current?.hit_count ?? 0) + 1 })
-      .eq("id", profileId);
-  }
+  // Use RPC for atomic increment - if the RPC doesn't exist, we skip incrementing
+  // to avoid a non-atomic read-modify-write race condition in the fallback
+  await supabase.rpc("increment_hit_count", { profile_id: profileId });
 
   // Set cookie to rate-limit to 1 increment per hour per visitor
   cookieStore.set(cookieKey, "1", {
