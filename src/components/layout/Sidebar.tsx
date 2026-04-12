@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/", label: "Home", icon: "🏠" },
+  { href: "/feed", label: "Home", icon: "🏠" },
   { href: "/profile", label: "Profile", icon: "👤" },
   { href: "/friends", label: "Friends", icon: "👥" },
   { href: "/games", label: "Games", icon: "🎮" },
@@ -21,7 +21,9 @@ export default function Sidebar() {
   return (
     <nav className="space-y-1">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(item.href + "/") && item.href !== "/";
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/feed" && pathname.startsWith(item.href + "/"));
         return (
           <Link
             key={item.href}

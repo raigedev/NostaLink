@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { createMiddlewareClient } from "@/lib/supabase/middleware";
 
 const PROTECTED_ROUTES = [
+  "/feed",
   "/profile",
   "/games",
   "/surveys",
@@ -42,7 +43,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (session && (pathname === "/login" || pathname === "/register")) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/feed", request.url));
   }
 
   return response;
