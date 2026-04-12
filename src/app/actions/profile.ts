@@ -1,8 +1,17 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeCSS, sanitizeHTML } from "@/lib/sanitize";
+import { sanitizeCSS, sanitizeScopedCSS, sanitizeHTML } from "@/lib/sanitize";
+import {
+  validateUpload,
+  generateFileName,
+  AVATAR_CONSTRAINTS,
+  BACKGROUND_CONSTRAINTS,
+  AUDIO_CONSTRAINTS,
+} from "@/lib/security/upload-validator";
 
 export interface Profile {
   id: string;
@@ -31,6 +40,18 @@ export interface Profile {
   updated_at: string | null;
 }
 
+const profileUpdateSchema = z.object({
+  display_name: z.string().min(1).max(50).optional().or(z.literal("")),
+  bio: z.string().max(500).optional(),
+  mood: z.string().max(100).optional(),
+  headline: z.string().max(150).optional(),
+  location: z.string().max(100).optional(),
+  website: z.string().url().optional().or(z.literal("")),
+  relationship_status: z
+    .enum(["single", "in_relationship", "married", "complicated", ""])
+    .optional(),
+});
+
 export async function getProfile(username: string): Promise<Profile | null> {
   const supabase = await createClient();
   const { data } = await supabase
@@ -46,14 +67,23 @@ export async function updateProfile(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const raw = {
+    display_name: formData.get("display_name") as string | null,
+    bio: formData.get("bio") as string | null,
+    mood: formData.get("mood") as string | null,
+    headline: formData.get("headline") as string | null,
+    location: formData.get("location") as string | null,
+    website: formData.get("website") as string | null,
+    relationship_status: formData.get("relationship_status") as string | null,
+  };
+
+  const parsed = profileUpdateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid data" };
+  }
+
   const updates: Record<string, unknown> = {
-    display_name: formData.get("display_name"),
-    bio: formData.get("bio"),
-    mood: formData.get("mood"),
-    headline: formData.get("headline"),
-    location: formData.get("location"),
-    website: formData.get("website"),
-    relationship_status: formData.get("relationship_status"),
+    ...parsed.data,
     updated_at: new Date().toISOString(),
   };
 
@@ -92,8 +122,12 @@ export async function updateProfileCustomization(data: {
 
   const sanitized = {
     ...data,
-    custom_css: data.custom_css ? sanitizeCSS(data.custom_css) : data.custom_css,
-    custom_html: data.custom_html ? sanitizeHTML(data.custom_html) : data.custom_html,
+    custom_css: data.custom_css != null
+      ? sanitizeScopedCSS(data.custom_css, user.id)
+      : data.custom_css,
+    custom_html: data.custom_html != null
+      ? sanitizeHTML(data.custom_html)
+      : data.custom_html,
     updated_at: new Date().toISOString(),
   };
 
@@ -127,3 +161,306 @@ export async function updateAvatar(url: string) {
   if (error) return { error: error.message };
   return { success: true };
 }
+
+// ── File Upload Actions ───────────────────────────────────────────────────────
+
+async function uploadFileToStorage(
+  bucket: string,
+  file: File,
+  constraints: typeof AVATAR_CONSTRAINTS
+): Promise<{ url: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const validation = await validateUpload(file, constraints);
+  if (!validation.valid) return { error: validation.error! };
+
+  const fileName = generateFileName(file.name);
+  const path = `${user.id}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, {
+      contentType: validation.detectedMime,
+      upsert: false,
+    });
+
+  if (uploadError) return { error: uploadError.message };
+
+  const { data: publicUrl } = supabase.storage.from(bucket).getPublicUrl(path);
+  return { url: publicUrl.publicUrl };
+}
+
+export async function uploadAvatar(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided" };
+
+  const result = await uploadFileToStorage("avatars", file, AVATAR_CONSTRAINTS);
+  if ("error" in result) return result;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: result.url, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true, url: result.url };
+}
+
+export async function uploadCoverPhoto(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided" };
+
+  const result = await uploadFileToStorage("profile-backgrounds", file, BACKGROUND_CONSTRAINTS);
+  if ("error" in result) return result;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ cover_url: result.url, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true, url: result.url };
+}
+
+export async function uploadProfileBackground(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided" };
+
+  const result = await uploadFileToStorage("profile-backgrounds", file, BACKGROUND_CONSTRAINTS);
+  if ("error" in result) return result;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ bg_url: result.url, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true, url: result.url };
+}
+
+export async function uploadProfileAudio(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided" };
+
+  const result = await uploadFileToStorage("profile-audio", file, AUDIO_CONSTRAINTS);
+  if ("error" in result) return result;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ profile_song_url: result.url, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true, url: result.url };
+}
+
+// ── Widget / Top Friends Actions ──────────────────────────────────────────────
+
+const widgetsSchema = z.array(z.record(z.string(), z.unknown())).max(20);
+
+export async function updateWidgets(widgets: Record<string, unknown>[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const parsed = widgetsSchema.safeParse(widgets);
+  if (!parsed.success) return { error: "Invalid widgets data" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ widgets: parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true };
+}
+
+const topFriendsSchema = z.array(z.string().uuid()).max(8);
+
+export async function updateTopFriends(friendIds: string[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const parsed = topFriendsSchema.safeParse(friendIds);
+  if (!parsed.success) return { error: "Invalid friend IDs" };
+
+  // Verify all IDs are actual accepted friends
+  const { data: friendships } = await supabase
+    .from("friendships")
+    .select("user_id, friend_id")
+    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+    .eq("status", "accepted");
+
+  const friendSet = new Set<string>();
+  for (const f of friendships ?? []) {
+    if (f.user_id === user.id) friendSet.add(f.friend_id);
+    else friendSet.add(f.user_id);
+  }
+
+  const validIds = parsed.data.filter((id) => friendSet.has(id));
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ top_friends: validIds, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true };
+}
+
+// ── Hit Counter (rate limited: 1 per visitor per hour) ────────────────────────
+
+export async function incrementHitCount(profileId: string) {
+  const cookieStore = await cookies();
+  const cookieKey = `hit_${profileId}`;
+
+  // Check if we already counted this visitor recently
+  const existing = cookieStore.get(cookieKey);
+  if (existing) return { skipped: true };
+
+  const supabase = await createClient();
+
+  // Use RPC for atomic increment - if the RPC doesn't exist, we skip incrementing
+  // to avoid a non-atomic read-modify-write race condition in the fallback
+  await supabase.rpc("increment_hit_count", { profile_id: profileId });
+
+  // Set cookie to rate-limit to 1 increment per hour per visitor
+  cookieStore.set(cookieKey, "1", {
+    maxAge: 3600,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  return { success: true };
+}
+
+// ── CSS / HTML Update Actions ─────────────────────────────────────────────────
+
+const cssSchema = z.string().max(10_240);
+
+export async function updateCustomCss(css: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const parsed = cssSchema.safeParse(css);
+  if (!parsed.success) return { error: "CSS exceeds maximum length" };
+
+  const sanitized = sanitizeScopedCSS(parsed.data, user.id);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ custom_css: sanitized, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true };
+}
+
+const htmlSchema = z.string().max(20_480);
+
+export async function updateCustomHtml(html: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const parsed = htmlSchema.safeParse(html);
+  if (!parsed.success) return { error: "HTML exceeds maximum length" };
+
+  const sanitized = sanitizeHTML(parsed.data);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ custom_html: sanitized, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true };
+}
+
+
+
