@@ -26,7 +26,9 @@ export default function ShoutboxWidget({ profileId }: Props) {
       .eq("profile_id", profileId)
       .order("created_at", { ascending: false })
       .limit(20)
-      .then(({ data }) => setShouts((data as Shout[]) ?? []));
+      .then(({ data, error }) => {
+        if (!error) setShouts((data as Shout[]) ?? []);
+      });
 
     const channel = supabase
       .channel(`shoutbox:${profileId}`)

@@ -346,14 +346,14 @@ export async function updateTopFriends(friendIds: string[]) {
   // Verify all IDs are actual accepted friends
   const { data: friendships } = await supabase
     .from("friendships")
-    .select("user_id, friend_id")
-    .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+    .select("requester_id, addressee_id")
+    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
     .eq("status", "accepted");
 
   const friendSet = new Set<string>();
   for (const f of friendships ?? []) {
-    if (f.user_id === user.id) friendSet.add(f.friend_id);
-    else friendSet.add(f.user_id);
+    if (f.requester_id === user.id) friendSet.add(f.addressee_id);
+    else friendSet.add(f.requester_id);
   }
 
   const validIds = parsed.data.filter((id) => friendSet.has(id));
@@ -387,9 +387,13 @@ export async function incrementHitCount(profileId: string) {
 
   const supabase = await createClient();
 
-  // Use RPC for atomic increment - if the RPC doesn't exist, we skip incrementing
-  // to avoid a non-atomic read-modify-write race condition in the fallback
-  await supabase.rpc("increment_hit_count", { profile_id: profileId });
+  // Use RPC for atomic increment - if the RPC doesn't exist, silently skip
+  try {
+    await supabase.rpc("increment_hit_count", { profile_id: profileId });
+  } catch (err) {
+    // RPC might not exist yet, silently skip
+    console.error("increment_hit_count RPC error:", err);
+  }
 
   // Set cookie to rate-limit to 1 increment per hour per visitor
   cookieStore.set(cookieKey, "1", {
