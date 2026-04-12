@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MAX_CSS_LENGTH } from "@/lib/sanitizers/css-sanitizer";
+import { sanitizeScopedCSS, MAX_CSS_LENGTH } from "@/lib/sanitizers/css-sanitizer";
 
 interface Props {
   defaultValue: string;
@@ -15,6 +15,9 @@ export default function CSSEditor({ defaultValue, userId, onSave }: Props) {
 
   const charCount = value.length;
   const overLimit = charCount > MAX_CSS_LENGTH;
+
+  // Always sanitize and scope CSS before injecting into preview
+  const previewCss = showPreview ? sanitizeScopedCSS(value, userId) : "";
 
   return (
     <div className="space-y-3">
@@ -55,10 +58,11 @@ export default function CSSEditor({ defaultValue, userId, onSave }: Props) {
       {showPreview && value && (
         <div className="rounded-lg border border-gray-200 overflow-hidden">
           <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-600">
-            Live Preview
+            Live Preview (sanitized)
           </div>
           <div className={`p-4 profile-custom-${userId}`}>
-            <style dangerouslySetInnerHTML={{ __html: value }} />
+            {/* Only inject sanitized + scoped CSS */}
+            <style dangerouslySetInnerHTML={{ __html: previewCss }} />
             <p className="text-sm">Preview: your CSS styles will appear here when the profile is saved.</p>
             <h2>Sample Heading</h2>
             <p>Sample paragraph text for preview.</p>

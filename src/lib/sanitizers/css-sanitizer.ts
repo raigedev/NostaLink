@@ -1,5 +1,8 @@
 const MAX_CSS_LENGTH = 10_240;
 
+// Strict pattern for Supabase storage URLs
+const SUPABASE_STORAGE_URL = /^https:\/\/[a-zA-Z0-9-]+\.supabase\.co\/storage\/v1\//;
+
 const BLOCKED_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   { pattern: /expression\s*\(/gi, label: "expression()" },
   { pattern: /javascript\s*:/gi, label: "javascript:" },
@@ -13,12 +16,21 @@ const BLOCKED_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
   // Block high z-index values (>9999)
   { pattern: /z-index\s*:\s*(?:[1-9]\d{4,}|\d{5,})/gi, label: "excessive z-index" },
   { pattern: /cursor\s*:\s*none/gi, label: "cursor:none" },
-  // Block external URLs except Supabase storage - require the ENTIRE URL to be a Supabase storage URL
-  {
-    pattern: /url\s*\(\s*['"]?((?!https:\/\/[a-zA-Z0-9-]+\.supabase\.co\/storage\/)[^)'"]*?)['"]?\s*\)/gi,
-    label: "external URL",
-  },
 ];
+
+/**
+ * Replace url() values that are not valid Supabase storage URLs.
+ * Validates the full URL rather than using a fragile negative lookahead.
+ */
+function blockExternalUrls(css: string): string {
+  return css.replace(/url\s*\(\s*(['"]?)([^)'"]*)\1\s*\)/gi, (_match, _quote, urlValue) => {
+    const trimmed = urlValue.trim();
+    if (!trimmed || SUPABASE_STORAGE_URL.test(trimmed)) {
+      return _match; // Allow empty and valid Supabase storage URLs
+    }
+    return "url(/* blocked */)";
+  });
+}
 
 /**
  * Sanitize CSS and scope all selectors under `.profile-custom-{userId}`.
@@ -36,6 +48,9 @@ export function sanitizeScopedCSS(css: string, userId: string): string {
     sanitized = sanitized.replace(pattern, "/* blocked */");
   }
 
+  // Replace external URLs with a validated approach
+  sanitized = blockExternalUrls(sanitized);
+
   // Scope each rule under .profile-custom-{userId}
   const scope = `.profile-custom-${userId}`;
   return scopeCSS(sanitized, scope);
@@ -50,7 +65,7 @@ export function sanitizeCSS(css: string): string {
   for (const { pattern } of BLOCKED_PATTERNS) {
     result = result.replace(pattern, "/* blocked */");
   }
-  return result;
+  return blockExternalUrls(result);
 }
 
 /**
