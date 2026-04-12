@@ -1,7 +1,8 @@
 "use client";
 
 import type { Profile } from "@/app/actions/profile";
-import WidgetRenderer, { type WidgetConfig } from "./WidgetRenderer";
+import WidgetRenderer from "./WidgetRenderer";
+import type { WidgetConfig } from "@/types/widget";
 
 interface Friend {
   username: string;

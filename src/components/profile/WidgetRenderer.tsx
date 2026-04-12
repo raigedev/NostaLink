@@ -1,6 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { WidgetConfig } from "@/types/widget";
+
+export type { WidgetConfig };
 
 const ClockWidget = dynamic(() => import("./widgets/ClockWidget"), { ssr: false });
 const WeatherWidget = dynamic(() => import("./widgets/WeatherWidget"), { ssr: false });
@@ -14,14 +17,6 @@ const GuestbookWidget = dynamic(() => import("./widgets/GuestbookWidget"), { ssr
 const ShoutboxWidget = dynamic(() => import("./widgets/ShoutboxWidget"), { ssr: false });
 const Top8FriendsWidget = dynamic(() => import("./widgets/Top8FriendsWidget"), { ssr: false });
 const CustomHTMLWidget = dynamic(() => import("./widgets/CustomHTMLWidget"), { ssr: false });
-
-export interface WidgetConfig {
-  id?: string;
-  type: string;
-  visible?: boolean;
-  settings?: Record<string, unknown>;
-  order?: number;
-}
 
 interface Props {
   widget: WidgetConfig;

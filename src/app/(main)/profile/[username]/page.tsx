@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { getProfile } from "@/app/actions/profile";
 import { createClient } from "@/lib/supabase/server";
 import ProfileSections from "@/components/profile/ProfileSections";
 import MusicPlayer from "@/components/profile/MusicPlayer";
 import HitCounterWidget from "@/components/profile/widgets/HitCounterWidget";
+import HitCountTracker from "@/components/profile/HitCountTracker";
 import GuestbookWidget from "@/components/profile/widgets/GuestbookWidget";
 import ShoutboxWidget from "@/components/profile/widgets/ShoutboxWidget";
 import Top8FriendsWidget from "@/components/profile/widgets/Top8FriendsWidget";
@@ -32,18 +32,6 @@ export default async function ProfilePage({ params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const isOwner = user?.id === profile.id;
-
-  // Increment hit counter (rate limited: 1 per visitor per hour via cookie)
-  const cookieStore = await cookies();
-  const hitCookieKey = `hit_${profile.id}`;
-  const alreadyCounted = cookieStore.get(hitCookieKey);
-  if (!alreadyCounted) {
-    supabase
-      .from("profiles")
-      .update({ hit_count: (profile.hit_count || 0) + 1 })
-      .eq("id", profile.id)
-      .then(() => {});
-  }
 
   // Fetch degrees of connection for non-owners
   let degrees: number | null = null;
@@ -205,6 +193,8 @@ export default async function ProfilePage({ params }: Props) {
       {profile.profile_song_url && (
         <MusicPlayer src={profile.profile_song_url} title={profile.display_name ?? profile.username} />
       )}
+      {/* Rate-limited hit counter tracker */}
+      <HitCountTracker profileId={profile.id} />
     </div>
   );
 }

@@ -401,6 +401,14 @@ export async function incrementHitCount(profileId: string) {
       .eq("id", profileId);
   }
 
+  // Set cookie to rate-limit to 1 increment per hour per visitor
+  cookieStore.set(cookieKey, "1", {
+    maxAge: 3600,
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
   return { success: true };
 }
 

@@ -2,19 +2,12 @@
 
 import { useState, useRef } from "react";
 import WidgetLibrary, { type WidgetDef } from "./WidgetLibrary";
+import type { WidgetConfig } from "@/types/widget";
 
-export interface WidgetConfig {
-  id: string;
-  type: string;
-  label: string;
-  icon: string;
-  visible: boolean;
-  settings: Record<string, unknown>;
-  order: number;
-}
+export type { WidgetConfig };
 
 interface Props {
-  initialWidgets: Record<string, unknown>[];
+  initialWidgets: WidgetConfig[];
   profileId: string;
   onSave: (widgets: Record<string, unknown>[]) => void;
 }
@@ -33,7 +26,7 @@ function createWidget(def: WidgetDef, order: number): WidgetConfig {
 
 export default function WidgetEditor({ initialWidgets, onSave }: Props) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(
-    (initialWidgets as unknown as WidgetConfig[]).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    [...initialWidgets].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   );
   const [showLibrary, setShowLibrary] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);

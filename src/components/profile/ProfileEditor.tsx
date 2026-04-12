@@ -91,7 +91,7 @@ function FileUploadButton({
   );
 }
 
-export type WidgetConfig = Record<string, unknown>;
+export type WidgetConfig = import("@/types/widget").WidgetConfig;
 
 export default function ProfileEditor({ profile }: Props) {
   const [activeTab, setActiveTab] = useState("Basic Info");
@@ -346,7 +346,7 @@ export default function ProfileEditor({ profile }: Props) {
         {/* ── Tab 6: Widgets ──────────────────────────────────────────── */}
         {activeTab === "Widgets" && (
           <WidgetEditor
-            initialWidgets={(profile.widgets as WidgetConfig[]) ?? []}
+            initialWidgets={(profile.widgets ?? []) as unknown as WidgetConfig[]}
             profileId={profile.id}
             onSave={handleWidgetsSave}
           />
