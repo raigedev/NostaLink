@@ -87,7 +87,7 @@ export default function ProfileConnectButtons({
         className="fp-btn secondary"
         style={{ marginTop: "4px" }}
       >
-        {msgPending ? "Opening…" : "✉️ Message " + profileUsername}
+        {msgPending ? "Opening…" : `✉️ Message ${profileUsername}`}
       </button>
       {msgError && (
         <p style={{ fontSize: "11px", color: "#c00", margin: "2px 0 0" }}>{msgError}</p>

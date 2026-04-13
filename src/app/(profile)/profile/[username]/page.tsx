@@ -38,13 +38,22 @@ export default async function ProfilePage({ params }: Props) {
   type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
   let friendshipStatus: FriendshipStatus = "none";
   if (user && !isOwner) {
-    const { data: friendship } = await supabase
+    // Two targeted queries using parameterized .eq() to avoid string interpolation
+    const { data: asRequester } = await supabase
       .from("friendships")
       .select("id, status, requester_id")
-      .or(
-        `and(requester_id.eq.${user.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${user.id})`
-      )
+      .eq("requester_id", user.id)
+      .eq("addressee_id", profile.id)
       .maybeSingle();
+    const { data: asAddressee } = !asRequester
+      ? await supabase
+          .from("friendships")
+          .select("id, status, requester_id")
+          .eq("requester_id", profile.id)
+          .eq("addressee_id", user.id)
+          .maybeSingle()
+      : { data: null };
+    const friendship = asRequester ?? asAddressee;
     if (friendship) {
       if (friendship.status === "accepted") {
         friendshipStatus = "accepted";
