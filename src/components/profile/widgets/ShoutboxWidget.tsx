@@ -60,30 +60,32 @@ export default function ShoutboxWidget({ profileId }: Props) {
   }
 
   return (
-    <div className="p-4 rounded-xl border" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--border-color)" }}>
-      <h3 className="font-semibold mb-3">💬 Shoutbox</h3>
-      <form onSubmit={send} className="flex gap-2 mb-3">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Say something…"
-          className="flex-1 text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent"
-        />
-        <button
-          type="submit"
-          disabled={!text.trim()}
-          className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs disabled:opacity-50 hover:bg-indigo-700 transition"
-        >
-          Shout
-        </button>
-      </form>
-      <div className="space-y-1.5 max-h-36 overflow-y-auto">
-        {shouts.map((s) => (
-          <div key={s.id} className="flex items-baseline gap-1 text-xs">
-            <span className="font-semibold text-indigo-600">{s.author?.username}:</span>
-            <span className="opacity-80">{s.content}</span>
-          </div>
-        ))}
+    <div className="fp-section">
+      <div className="fp-section-header teal">💬 Shoutbox</div>
+      <div className="fp-section-body">
+        <form onSubmit={send} className="flex gap-2 mb-3">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Say something…"
+            className="fp-widget-input"
+          />
+          <button
+            type="submit"
+            disabled={!text.trim()}
+            className="fp-btn-widget"
+          >
+            Shout
+          </button>
+        </form>
+        <div style={{ maxHeight: "var(--fp-scroll-height)", overflowY: "auto" }}>
+          {shouts.map((s) => (
+            <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: "4px", fontSize: "12px", marginBottom: "4px" }}>
+              <span style={{ fontWeight: "bold", color: "var(--fp-shout-highlight)" }}>{s.author?.username}:</span>
+              <span style={{ opacity: 0.85 }}>{s.content}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

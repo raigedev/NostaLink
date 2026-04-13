@@ -78,8 +78,10 @@ export default function WidgetRenderer({
 
     default:
       return (
-        <div className="p-4 rounded-xl border" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--border-color)" }}>
-          <p className="text-xs text-gray-400">Unknown widget: {widget.type}</p>
+        <div className="fp-section">
+          <div className="fp-section-body">
+            <p style={{ fontSize: "12px", color: "var(--fp-panel-text-muted)" }}>Unknown widget: {widget.type}</p>
+          </div>
         </div>
       );
   }
