@@ -415,7 +415,17 @@ body {
   font-style: italic;
 }
 
+.fp-coming-soon-note {
+  font-size: 11px;
+  color: var(--text-secondary, #999);
+  font-style: italic;
+  text-align: center;
+  padding: 4px 0 2px;
+  opacity: 0.6;
+}
+
 @media (max-width: 600px) {
   .fp-layout { flex-direction: column; }
   .fp-left { width: 100%; }
+  .fp-right { width: 100%; }
 }

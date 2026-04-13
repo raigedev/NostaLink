@@ -12,6 +12,8 @@ import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
 import { degreesLabel, formatRelationshipStatus } from "@/lib/utils";
 import Link from "next/link";
+import AddFriendButton from "@/components/profile/AddFriendButton";
+import SendMessageButton from "@/components/profile/SendMessageButton";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -77,6 +79,28 @@ export default async function ProfilePage({ params }: Props) {
   const bgModeClass = profile.bg_mode ? `bg-mode-${profile.bg_mode}` : "";
   const scopedCssClass = `profile-custom-${profile.id}`;
   const degLabel = degreesLabel(degrees);
+
+  // Fetch friendship status between current user and profile owner
+  type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "friends";
+  let friendshipStatus: FriendshipStatus = "none";
+  if (user && !isOwner) {
+    const { data: friendship } = await supabase
+      .from("friendships")
+      .select("id, requester_id, addressee_id, status")
+      .or(
+        `and(requester_id.eq.${user.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${user.id})`
+      )
+      .maybeSingle();
+    if (friendship) {
+      if (friendship.status === "accepted") {
+        friendshipStatus = "friends";
+      } else if (friendship.status === "pending" && friendship.requester_id === user.id) {
+        friendshipStatus = "pending_sent";
+      } else if (friendship.status === "pending" && friendship.addressee_id === user.id) {
+        friendshipStatus = "pending_received";
+      }
+    }
+  }
 
   return (
     <div
@@ -197,12 +221,8 @@ export default async function ProfilePage({ params }: Props) {
                   </Link>
                 ) : user ? (
                   <>
-                    <Link href="/friends" className="fp-btn">
-                      ➕ Add Friend
-                    </Link>
-                    <Link href="/chat" className="fp-btn secondary">
-                      ✉️ Send Message
-                    </Link>
+                    <AddFriendButton profileId={profile.id} initialStatus={friendshipStatus} />
+                    <SendMessageButton profileId={profile.id} />
                   </>
                 ) : (
                   <Link href="/login" className="fp-btn">
@@ -231,18 +251,6 @@ export default async function ProfilePage({ params }: Props) {
 
           {/* ── RIGHT COLUMN ── */}
           <main className="fp-right">
-
-            {/* Testimonials placeholder */}
-            <div className="fp-section">
-              <div className="fp-section-header">Testimonials</div>
-              <div className="fp-section-body">
-                <p className="fp-testimonial-placeholder">
-                  Be the first to write a testimonial for{" "}
-                  <strong>{profile.display_name || profile.username}</strong>!
-                  Testimonials let others know what you think about this person.
-                </p>
-              </div>
-            </div>
 
             {/* About Me */}
             {profile.bio && (
@@ -275,6 +283,11 @@ export default async function ProfilePage({ params }: Props) {
 
             {/* Shoutbox / Comments */}
             <ShoutboxWidget profileId={profile.id} />
+
+            {/* Testimonials — coming soon (subtle note) */}
+            <p className="fp-coming-soon-note">
+              💬 Testimonials — coming soon
+            </p>
 
           </main>
         </div>
