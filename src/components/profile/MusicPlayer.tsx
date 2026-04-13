@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface Props {
   src: string;
@@ -9,19 +9,31 @@ interface Props {
 
 export default function MusicPlayer({ src, title }: Props) {
   const [playing, setPlaying] = useState(false);
-  const [minimized, setMinimized] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Attempt autoplay on mount; gracefully handle browser autoplay blocks
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.volume = volume;
+    audio.play().then(() => setPlaying(true)).catch(() => {
+      // Browser blocked autoplay — user must interact to start playback
+      setPlaying(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function togglePlay() {
     if (!audioRef.current) return;
     if (playing) {
       audioRef.current.pause();
+      setPlaying(false);
     } else {
-      audioRef.current.play();
+      audioRef.current.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     }
-    setPlaying(!playing);
   }
 
   function handleTimeUpdate() {
@@ -50,26 +62,23 @@ export default function MusicPlayer({ src, title }: Props) {
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setPlaying(false)}
       />
-      <div className="fp-music-header">
-        🎵 Profile Music
-      </div>
-      <div className="fp-music-body">
+      {/* Single compact row — label · play · [progress · volume when expanded] · toggle */}
+      <div className="fp-music-row">
+        <span className="fp-music-label">🎵 {title}&apos;s song</span>
         <button onClick={togglePlay} className="fp-music-btn" title={playing ? "Pause" : "Play"}>
           {playing ? "⏸" : "▶"}
         </button>
-        {!minimized && (
+        {!collapsed && (
           <>
-            <div className="fp-music-info">
-              <div className="fp-music-title">{title}'s song</div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={progress}
-                onChange={handleSeek}
-                className="fp-music-progress"
-              />
-            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={progress}
+              onChange={handleSeek}
+              className="fp-music-progress"
+              title="Seek"
+            />
             <input
               type="range"
               min={0}
@@ -83,11 +92,11 @@ export default function MusicPlayer({ src, title }: Props) {
           </>
         )}
         <button
-          onClick={() => setMinimized(!minimized)}
+          onClick={() => setCollapsed(!collapsed)}
           className="fp-music-min"
-          title={minimized ? "Expand" : "Collapse"}
+          title={collapsed ? "Expand controls" : "Collapse controls"}
         >
-          {minimized ? "▲" : "▼"}
+          {collapsed ? "▶▶" : "▼"}
         </button>
       </div>
     </div>

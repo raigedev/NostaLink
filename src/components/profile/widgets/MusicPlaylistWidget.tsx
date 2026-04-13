@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 interface Track { title: string; artist: string; duration: string; }
 
 const SAMPLE: Track[] = [
@@ -7,21 +11,31 @@ const SAMPLE: Track[] = [
 ];
 
 export default function MusicPlaylistWidget() {
+  const [open, setOpen] = useState(false);
+
   return (
-    <div className="p-4 rounded-xl border" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--border-color)" }}>
-      <h3 className="font-semibold mb-3">🎵 My Playlist</h3>
-      <div className="space-y-2">
-        {SAMPLE.map((t, i) => (
-          <div key={i} className="flex items-center gap-2 text-sm">
-            <span className="text-xs opacity-50 w-4">{i + 1}</span>
-            <div className="flex-1">
-              <p className="font-medium text-xs">{t.title}</p>
-              <p className="text-xs opacity-60">{t.artist}</p>
+    <div className="fp-section">
+      <button
+        className="fp-section-header blue fp-music-playlist-toggle"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        🎵 My Playlist <span className="fp-music-playlist-chevron">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <div className="fp-section-body">
+          {SAMPLE.map((t, i) => (
+            <div key={i} className="fp-music-playlist-row">
+              <span className="fp-music-playlist-num">{i + 1}</span>
+              <div className="fp-music-playlist-info">
+                <span className="fp-music-playlist-title">{t.title}</span>
+                <span className="fp-music-playlist-artist">{t.artist}</span>
+              </div>
+              <span className="fp-music-playlist-dur">{t.duration}</span>
             </div>
-            <span className="text-xs opacity-50">{t.duration}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

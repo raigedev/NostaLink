@@ -456,62 +456,52 @@ body {
 
 /* ── Integrated Profile Music Bar ────────────────────────────── */
 .fp-music-bar {
-  background: rgba(10, 18, 52, 0.70);
-  border: 1px solid rgba(60, 100, 185, 0.50);
+  background: rgba(10, 18, 52, 0.55);
+  border: 1px solid rgba(60, 100, 185, 0.45);
   color: #eef4ff;
   padding: 0;
   margin-bottom: 8px;
   overflow: hidden;
 }
-.fp-music-header {
-  background: #2a5080;
-  color: #fff;
-  font-weight: bold;
-  font-size: 11px;
+/* Single compact row containing all controls */
+.fp-music-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  min-height: 0;
 }
-.fp-music-body {
-  padding: 6px 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.fp-music-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #cce0ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 160px;
 }
 .fp-music-btn {
   background: #2a6faa;
   border: 1px solid #1a5090;
   color: #fff;
   border-radius: 3px;
-  padding: 3px 9px;
-  font-size: 14px;
+  padding: 2px 8px;
+  font-size: 13px;
   cursor: pointer;
   flex-shrink: 0;
+  line-height: 1.4;
 }
 .fp-music-btn:hover { background: #3a7fba; }
-.fp-music-info {
-  flex: 1;
-  min-width: 0;
-}
-.fp-music-title {
-  font-size: 11px;
-  font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: #cce0ff;
-  margin-bottom: 3px;
-}
 .fp-music-progress {
-  width: 100%;
+  flex: 1;
+  min-width: 40px;
   height: 4px;
   accent-color: #5aa0e0;
 }
 .fp-music-vol {
-  width: 44px;
+  width: 40px;
   height: 4px;
   accent-color: #5aa0e0;
   flex-shrink: 0;
@@ -521,11 +511,66 @@ body {
   border: none;
   color: #88aacc;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 10px;
   flex-shrink: 0;
   padding: 0 2px;
 }
 .fp-music-min:hover { color: #cce0ff; }
+
+/* ── Music Playlist Widget (collapsible) ─────────────────────── */
+.fp-music-playlist-toggle {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: none;
+  font: inherit;
+}
+.fp-music-playlist-chevron {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.fp-music-playlist-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 11px;
+}
+.fp-music-playlist-num {
+  opacity: 0.45;
+  width: 14px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.fp-music-playlist-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.fp-music-playlist-title {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fp-panel-text, #eef4ff);
+}
+.fp-music-playlist-artist {
+  font-size: 10px;
+  opacity: 0.6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fp-music-playlist-dur {
+  opacity: 0.5;
+  flex-shrink: 0;
+  font-size: 10px;
+}
 
 /* ── Top 8 friends ───────────────────────────────────────────── */
 .fp-friend-name {
