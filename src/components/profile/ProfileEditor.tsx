@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Profile } from "@/app/actions/profile";
 import {
   updateProfile,
@@ -13,6 +14,7 @@ import {
   updateCustomCss,
   updateCustomHtml,
 } from "@/app/actions/profile";
+import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, USERNAME_PATTERN } from "@/lib/validations";
 import ThemeSelector from "./ThemeSelector";
 import FontSelector from "./FontSelector";
 import CSSEditor from "./CSSEditor";
@@ -94,6 +96,7 @@ function FileUploadButton({
 export type WidgetConfig = import("@/types/widget").WidgetConfig;
 
 export default function ProfileEditor({ profile }: Props) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("Basic Info");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -109,7 +112,14 @@ export default function ProfileEditor({ profile }: Props) {
     const formData = new FormData(e.currentTarget);
     const result = await updateProfile(formData);
     setSaving(false);
-    showMessage(result?.error ?? "Saved!");
+    if (result?.error) {
+      showMessage(result.error);
+    } else {
+      showMessage("Saved!");
+      if (result?.newUsername) {
+        router.push(`/profile/${result.newUsername}/edit`);
+      }
+    }
   }
 
   async function handleCustomSave(data: Parameters<typeof updateProfileCustomization>[0]) {
@@ -204,6 +214,22 @@ export default function ProfileEditor({ profile }: Props) {
                   onUpload={uploadCoverPhoto}
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <div className="flex items-center">
+                <span className="px-3 py-2 border border-r-0 rounded-l-lg bg-gray-50 text-gray-500 text-sm">@</span>
+                <input
+                  name="username"
+                  defaultValue={profile.username}
+                  minLength={USERNAME_MIN_LENGTH}
+                  maxLength={USERNAME_MAX_LENGTH}
+                  pattern={USERNAME_PATTERN}
+                  title="Lowercase letters, numbers, and underscores only"
+                  className="w-full px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Lowercase letters, numbers, and underscores. 3–30 characters.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>

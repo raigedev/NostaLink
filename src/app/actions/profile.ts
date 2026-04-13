@@ -12,6 +12,7 @@ import {
   BACKGROUND_CONSTRAINTS,
   AUDIO_CONSTRAINTS,
 } from "@/lib/security/upload-validator";
+import { usernameSchema } from "@/lib/validations";
 
 export interface Profile {
   id: string;
@@ -41,6 +42,7 @@ export interface Profile {
 }
 
 const profileUpdateSchema = z.object({
+  username: usernameSchema.optional(),
   display_name: z.string().min(1).max(50).optional().or(z.literal("")),
   bio: z.string().max(500).optional(),
   mood: z.string().max(100).optional(),
@@ -68,6 +70,7 @@ export async function updateProfile(formData: FormData) {
   if (!user) return { error: "Not authenticated" };
 
   const raw = {
+    username: (formData.get("username") as string | null) || undefined,
     display_name: formData.get("display_name") as string | null,
     bio: formData.get("bio") as string | null,
     mood: formData.get("mood") as string | null,
@@ -82,6 +85,27 @@ export async function updateProfile(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid data" };
   }
 
+  // Get current username before update
+  const { data: currentProfile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+
+  if (!currentProfile) return { error: "Profile not found" };
+
+  const newUsername = parsed.data.username;
+
+  // If username is being changed, check uniqueness
+  if (newUsername && newUsername !== currentProfile.username) {
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", newUsername)
+      .maybeSingle();
+    if (existing) return { error: "Username is already taken" };
+  }
+
   const updates: Record<string, unknown> = {
     ...parsed.data,
     updated_at: new Date().toISOString(),
@@ -94,14 +118,14 @@ export async function updateProfile(formData: FormData) {
 
   if (error) return { error: error.message };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", user.id)
-    .single();
+  const finalUsername = newUsername ?? currentProfile.username;
+  revalidatePath(`/profile/${finalUsername}`);
+  revalidatePath(`/profile/${finalUsername}/edit`);
+  if (newUsername && newUsername !== currentProfile.username) {
+    revalidatePath(`/profile/${currentProfile.username}`);
+  }
 
-  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
-  return { success: true };
+  return { success: true, newUsername: newUsername !== currentProfile.username ? newUsername : undefined };
 }
 
 export async function updateProfileCustomization(data: {
