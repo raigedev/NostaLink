@@ -60,7 +60,7 @@ export default function MusicPlayer({ src, title }: Props) {
         {!minimized && (
           <>
             <div className="fp-music-info">
-              <div className="fp-music-title">{title}&apos;s song</div>
+              <div className="fp-music-title">{title}'s song</div>
               <input
                 type="range"
                 min={0}
