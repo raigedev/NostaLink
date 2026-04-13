@@ -415,7 +415,25 @@ body {
   font-style: italic;
 }
 
+.fp-coming-soon-note {
+  font-size: 11px;
+  color: var(--text-secondary, #999);
+  font-style: italic;
+  text-align: center;
+  padding: 4px 0 2px;
+  opacity: 0.7;
+}
+
+.fp-testimonials-soon .fp-section-header {
+  opacity: 0.6;
+}
+
 @media (max-width: 600px) {
   .fp-layout { flex-direction: column; }
   .fp-left { width: 100%; }
+  .fp-right { width: 100%; }
+  .fp-wrapper { padding: 8px 6px 20px; }
+  .fp-banner h1 { font-size: 15px; }
+  .fp-avatar-img { width: 80px; height: 80px; line-height: 80px; font-size: 28px; }
+  .fp-avatar-placeholder { line-height: 80px; font-size: 28px; }
 }

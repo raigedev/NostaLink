@@ -12,6 +12,7 @@ import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
 import { degreesLabel, formatRelationshipStatus } from "@/lib/utils";
 import Link from "next/link";
+import ProfileConnectButtons from "@/components/profile/ProfileConnectButtons";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -32,6 +33,27 @@ export default async function ProfilePage({ params }: Props) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const isOwner = user?.id === profile.id;
+
+  // Fetch friendship status between logged-in user and this profile
+  type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
+  let friendshipStatus: FriendshipStatus = "none";
+  if (user && !isOwner) {
+    const { data: friendship } = await supabase
+      .from("friendships")
+      .select("id, status, requester_id")
+      .or(
+        `and(requester_id.eq.${user.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${user.id})`
+      )
+      .maybeSingle();
+    if (friendship) {
+      if (friendship.status === "accepted") {
+        friendshipStatus = "accepted";
+      } else if (friendship.status === "pending") {
+        friendshipStatus =
+          friendship.requester_id === user.id ? "pending_sent" : "pending_received";
+      }
+    }
+  }
 
   // Fetch degrees of connection for non-owners
   let degrees: number | null = null;
@@ -196,14 +218,11 @@ export default async function ProfilePage({ params }: Props) {
                     ✏️ Edit My Profile
                   </Link>
                 ) : user ? (
-                  <>
-                    <Link href="/friends" className="fp-btn">
-                      ➕ Add Friend
-                    </Link>
-                    <Link href="/chat" className="fp-btn secondary">
-                      ✉️ Send Message
-                    </Link>
-                  </>
+                  <ProfileConnectButtons
+                    profileId={profile.id}
+                    profileUsername={profile.username}
+                    initialFriendshipStatus={friendshipStatus}
+                  />
                 ) : (
                   <Link href="/login" className="fp-btn">
                     Sign in to connect
@@ -232,14 +251,12 @@ export default async function ProfilePage({ params }: Props) {
           {/* ── RIGHT COLUMN ── */}
           <main className="fp-right">
 
-            {/* Testimonials placeholder */}
-            <div className="fp-section">
+            {/* Testimonials — coming soon */}
+            <div className="fp-section fp-testimonials-soon">
               <div className="fp-section-header">Testimonials</div>
               <div className="fp-section-body">
-                <p className="fp-testimonial-placeholder">
-                  Be the first to write a testimonial for{" "}
-                  <strong>{profile.display_name || profile.username}</strong>!
-                  Testimonials let others know what you think about this person.
+                <p className="fp-coming-soon-note">
+                  ✨ Testimonials coming soon
                 </p>
               </div>
             </div>
