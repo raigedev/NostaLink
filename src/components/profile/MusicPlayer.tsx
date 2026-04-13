@@ -146,7 +146,7 @@ export default function MusicPlayer({ src, title }: Props) {
           aria-label={collapsed ? "Expand music player" : "Collapse music player"}
           title={collapsed ? "Expand" : "Collapse"}
         >
-          {collapsed ? "▲" : "▼"}
+          {collapsed ? "▼" : "▲"}
         </button>
       </div>
 

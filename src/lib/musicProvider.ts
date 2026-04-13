@@ -15,7 +15,7 @@ export interface MusicSource {
  *  - YouTube  (youtube.com/watch?v=…, youtu.be/…, music.youtube.com/…)
  *  - SoundCloud (soundcloud.com/…)
  *  - Spotify  (open.spotify.com/track|album|playlist/…)
- *  - Direct audio (.mp3, .ogg, .wav, .flac, .aac, .m4a)
+ *  - Direct audio (.mp3, .ogg, .wav, .flac, .aac, .m4a, .opus)
  *
  * Returns provider "unknown" for anything else so the player can hide itself.
  */
