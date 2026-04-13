@@ -10,6 +10,20 @@
   --accent-2: #8b5cf6;
   --border-color: #e5e7eb;
   --card-bg: #ffffff;
+
+  /* ── Profile panel overlay vars (translucent for bg-image support) */
+  --fp-panel-bg: rgba(12, 18, 40, 0.62);
+  --fp-panel-border: rgba(80, 130, 200, 0.42);
+  --fp-panel-text: #e8f0ff;
+  --fp-panel-text-muted: rgba(210, 228, 255, 0.72);
+  --fp-author-highlight: #a0d0ff;
+  --fp-shout-highlight: #7ab8ff;
+  --fp-divider-color: rgba(80, 130, 200, 0.25);
+  --fp-avatar-bg: rgba(255, 255, 255, 0.12);
+  --fp-avatar-border: rgba(80, 130, 200, 0.45);
+  --fp-avatar-empty-border: rgba(80, 130, 200, 0.35);
+  --fp-avatar-empty-color: rgba(150, 180, 220, 0.45);
+  --fp-scroll-height: 152px;
 }
 
 body {
@@ -162,8 +176,8 @@ body {
   justify-content: space-between;
   align-items: center;
   font-size: 11px;
-  color: var(--text-secondary, #555);
-  border-bottom: 1px dotted var(--border-color, #ddd);
+  color: var(--fp-panel-text-muted);
+  border-bottom: 1px dotted var(--fp-panel-border);
   padding: 2px 0;
 }
 .fp-stat-item:last-child { border-bottom: none; }
@@ -171,7 +185,7 @@ body {
 .fp-stat-value {
   font-weight: bold;
   font-family: 'Courier New', monospace;
-  color: var(--text-primary, #222);
+  color: var(--fp-panel-text);
 }
 
 /* ── Animations ───────────────────────────────────────────────── */
@@ -265,8 +279,8 @@ body {
 }
 
 .fp-section {
-  background: var(--card-bg, rgba(255,255,255,0.92));
-  border: 1px solid var(--border-color, #b8ccda);
+  background: var(--fp-panel-bg);
+  border: 1px solid var(--fp-panel-border);
   margin-bottom: 8px;
   overflow: hidden;
 }
@@ -288,13 +302,14 @@ body {
   padding: 8px;
   font-size: 13px;
   line-height: 1.6;
+  color: var(--fp-panel-text);
 }
 
 .fp-avatar-box {
   text-align: center;
   padding: 10px 8px 8px;
-  background: var(--card-bg, rgba(255,255,255,0.92));
-  border: 1px solid var(--border-color, #b8ccda);
+  background: var(--fp-panel-bg);
+  border: 1px solid var(--fp-panel-border);
   margin-bottom: 6px;
 }
 
@@ -330,17 +345,20 @@ body {
   font-weight: bold;
   font-size: 15px;
   margin-bottom: 1px;
+  color: var(--fp-panel-text);
 }
 .fp-username {
   font-size: 11px;
-  opacity: 0.55;
+  opacity: 0.65;
   margin-bottom: 3px;
+  color: var(--fp-panel-text);
 }
 .fp-headline {
   font-size: 12px;
   font-style: italic;
-  opacity: 0.75;
+  opacity: 0.80;
   margin-top: 2px;
+  color: var(--fp-panel-text);
 }
 
 .fp-btn {
@@ -373,8 +391,23 @@ body {
   border-color: #555;
 }
 
+.fp-btn-widget {
+  background: linear-gradient(to bottom, #4a88d0, #2a6faa);
+  border: 1px solid #1a5090;
+  color: #fff;
+  border-radius: 3px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fp-btn-widget:hover { background: linear-gradient(to bottom, #5a98e0, #3a7fba); }
+.fp-btn-widget:disabled { opacity: 0.5; cursor: default; }
+
 .fp-website-link {
-  color: #2a6faa;
+  color: #7dc0ff;
   word-break: break-all;
   font-size: 11px;
 }
@@ -385,15 +418,15 @@ body {
 
 .fp-degrees {
   font-size: 11px;
-  color: var(--text-secondary, #555);
+  color: var(--fp-panel-text-muted);
   padding: 4px 8px;
   text-align: center;
 }
 
 .fp-hitcounter {
   padding: 8px;
-  background: var(--card-bg, rgba(255,255,255,0.92));
-  border: 1px solid var(--border-color, #b8ccda);
+  background: var(--fp-panel-bg);
+  border: 1px solid var(--fp-panel-border);
   margin-bottom: 6px;
 }
 
@@ -403,6 +436,7 @@ body {
   align-items: baseline;
   font-size: 12px;
   margin-bottom: 2px;
+  color: var(--fp-panel-text);
 }
 
 .fp-testimonial-placeholder {
@@ -422,8 +456,8 @@ body {
 
 /* ── Integrated Profile Music Bar ────────────────────────────── */
 .fp-music-bar {
-  background: linear-gradient(to right, #1a3a6a, #0e2a4a);
-  border: 1px solid #2a5080;
+  background: rgba(10, 18, 52, 0.70);
+  border: 1px solid rgba(60, 100, 185, 0.50);
   color: #eef4ff;
   padding: 0;
   margin-bottom: 8px;
@@ -492,6 +526,31 @@ body {
   padding: 0 2px;
 }
 .fp-music-min:hover { color: #cce0ff; }
+
+/* ── Top 8 friends ───────────────────────────────────────────── */
+.fp-friend-name {
+  font-size: 11px;
+  text-align: center;
+  color: var(--fp-panel-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+/* ── Widget form input inside translucent panels ─────────────── */
+.fp-widget-input {
+  flex: 1;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--fp-panel-border);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fp-panel-text);
+  outline: none;
+}
+.fp-widget-input::placeholder { color: var(--fp-panel-text-muted); }
+.fp-widget-input:focus { border-color: rgba(120, 170, 230, 0.70); background: rgba(255,255,255,0.13); }
 
 @media (max-width: 600px) {
   .fp-layout { flex-direction: column; }

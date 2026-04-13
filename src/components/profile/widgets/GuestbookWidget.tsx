@@ -53,34 +53,36 @@ export default function GuestbookWidget({ profileId }: Props) {
   }
 
   return (
-    <div className="p-4 rounded-xl border" style={{ backgroundColor: "var(--card-bg)", borderColor: "var(--border-color)" }}>
-      <h3 className="font-semibold mb-3">📖 Guestbook</h3>
-      <form onSubmit={submit} className="flex gap-2 mb-3">
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Leave a message…"
-          className="flex-1 text-xs px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-transparent"
-        />
-        <button
-          type="submit"
-          disabled={loading || !text.trim()}
-          className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs disabled:opacity-50 hover:bg-indigo-700 transition"
-        >
-          Sign
-        </button>
-      </form>
-      <div className="space-y-2 max-h-40 overflow-y-auto">
-        {entries.map((e) => (
-          <div key={e.id} className="text-xs border-b border-gray-100 pb-2">
-            <span className="font-semibold">{e.author?.display_name || e.author?.username}</span>
-            <span className="text-gray-400 ml-2">{formatRelativeTime(e.created_at)}</span>
-            <p className="mt-0.5 opacity-80">{e.content}</p>
-          </div>
-        ))}
-        {entries.length === 0 && (
-          <p className="text-xs opacity-50 text-center py-2">No entries yet. Be the first!</p>
-        )}
+    <div className="fp-section">
+      <div className="fp-section-header blue">📖 Guestbook</div>
+      <div className="fp-section-body">
+        <form onSubmit={submit} className="flex gap-2 mb-3">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Leave a message…"
+            className="fp-widget-input"
+          />
+          <button
+            type="submit"
+            disabled={loading || !text.trim()}
+            className="fp-btn-widget"
+          >
+            Sign
+          </button>
+        </form>
+        <div style={{ maxHeight: "var(--fp-scroll-height)", overflowY: "auto" }}>
+          {entries.map((e) => (
+            <div key={e.id} style={{ fontSize: "12px", borderBottom: "1px solid var(--fp-divider-color)", paddingBottom: "6px", marginBottom: "6px" }}>
+              <span style={{ fontWeight: "bold", color: "var(--fp-author-highlight)" }}>{e.author?.display_name || e.author?.username}</span>
+              <span style={{ color: "var(--fp-panel-text-muted)", marginLeft: "6px", fontSize: "11px" }}>{formatRelativeTime(e.created_at)}</span>
+              <p style={{ marginTop: "2px", opacity: 0.85 }}>{e.content}</p>
+            </div>
+          ))}
+          {entries.length === 0 && (
+            <p style={{ fontSize: "12px", opacity: 0.5, textAlign: "center", padding: "8px 0" }}>No entries yet. Be the first!</p>
+          )}
+        </div>
       </div>
     </div>
   );
