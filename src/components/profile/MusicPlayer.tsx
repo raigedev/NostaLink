@@ -43,28 +43,31 @@ export default function MusicPlayer({ src, title }: Props) {
   }
 
   return (
-    <div className="fixed bottom-16 md:bottom-4 left-4 z-50 bg-gray-900 text-white rounded-xl shadow-2xl overflow-hidden">
+    <div className="fp-music-bar">
       <audio
         ref={audioRef}
         src={src}
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => setPlaying(false)}
       />
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button onClick={togglePlay} className="text-xl w-8 h-8 flex items-center justify-center">
-          {playing ? "⏸" : "▶️"}
+      <div className="fp-music-header">
+        🎵 Profile Music
+      </div>
+      <div className="fp-music-body">
+        <button onClick={togglePlay} className="fp-music-btn" title={playing ? "Pause" : "Play"}>
+          {playing ? "⏸" : "▶"}
         </button>
         {!minimized && (
           <>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">{title}</p>
+            <div className="fp-music-info">
+              <div className="fp-music-title">{title}'s song</div>
               <input
                 type="range"
                 min={0}
                 max={100}
                 value={progress}
                 onChange={handleSeek}
-                className="w-full h-1 mt-1 accent-indigo-400"
+                className="fp-music-progress"
               />
             </div>
             <input
@@ -74,15 +77,17 @@ export default function MusicPlayer({ src, title }: Props) {
               step={0.01}
               value={volume}
               onChange={handleVolumeChange}
-              className="w-12 h-1 accent-indigo-400"
+              className="fp-music-vol"
+              title="Volume"
             />
           </>
         )}
         <button
           onClick={() => setMinimized(!minimized)}
-          className="text-xs text-gray-400 hover:text-white ml-1"
+          className="fp-music-min"
+          title={minimized ? "Expand" : "Collapse"}
         >
-          {minimized ? "⬆" : "⬇"}
+          {minimized ? "▲" : "▼"}
         </button>
       </div>
     </div>

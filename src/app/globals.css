@@ -151,30 +151,27 @@ body {
   --card-bg: #fdf6e3;
 }
 
-/* ── Retro Hit Counter ────────────────────────────────────────── */
-.retro-digit {
-  display: inline-block;
-  background: #000;
-  color: #ff4400;
-  font-family: 'VT323', 'Courier New', monospace;
-  font-size: 1.5rem;
-  line-height: 1;
-  padding: 2px 6px;
-  border: 2px inset #333;
-  border-radius: 2px;
-  min-width: 1.2ch;
-  text-align: center;
-  box-shadow: inset 0 0 4px #ff4400;
-  letter-spacing: 2px;
+/* ── Profile Stat Row (replaces retro LED counter) ───────────── */
+.fp-stat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
-
-.retro-counter {
-  display: inline-flex;
-  gap: 2px;
-  background: #111;
-  border: 3px outset #666;
-  padding: 4px 6px;
-  border-radius: 4px;
+.fp-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-secondary, #555);
+  border-bottom: 1px dotted var(--border-color, #ddd);
+  padding: 2px 0;
+}
+.fp-stat-item:last-child { border-bottom: none; }
+.fp-stat-label { opacity: 0.75; }
+.fp-stat-value {
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  color: var(--text-primary, #222);
 }
 
 /* ── Animations ───────────────────────────────────────────────── */
@@ -199,7 +196,7 @@ body {
 
 /* ── Friendster-style Public Profile Page ────────────────────── */
 .fp-topnav {
-  background: linear-gradient(to right, #e07800, #c05500);
+  background: linear-gradient(to right, #2a7a2a, #1a5c1a);
   color: #fff;
   padding: 5px 14px;
   display: flex;
@@ -238,7 +235,7 @@ body {
   padding: 8px 12px;
   margin-bottom: 10px;
   border: 1px solid var(--border-color);
-  background: linear-gradient(to right, var(--accent-1, #3a7fc1), var(--accent-2, #2a6faa));
+  background: linear-gradient(to right, #2a7a2a, #2060a8);
 }
 .fp-banner h1 {
   color: #fff;
@@ -268,14 +265,14 @@ body {
 }
 
 .fp-section {
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border-color, #cccccc);
+  background: var(--card-bg, rgba(255,255,255,0.92));
+  border: 1px solid var(--border-color, #b8ccda);
   margin-bottom: 8px;
   overflow: hidden;
 }
 
 .fp-section-header {
-  background: #3a7fc1;
+  background: #2a6faa;
   color: #fff;
   font-weight: bold;
   font-size: 11px;
@@ -283,9 +280,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
-.fp-section-header.orange { background: #e07800; }
-.fp-section-header.teal   { background: #0098a0; }
-.fp-section-header.green  { background: #388a38; }
+.fp-section-header.green  { background: #2a7a2a; }
+.fp-section-header.teal   { background: #0e7f7f; }
+.fp-section-header.blue   { background: #2a6faa; }
 
 .fp-section-body {
   padding: 8px;
@@ -296,8 +293,8 @@ body {
 .fp-avatar-box {
   text-align: center;
   padding: 10px 8px 8px;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border-color, #ccc);
+  background: var(--card-bg, rgba(255,255,255,0.92));
+  border: 1px solid var(--border-color, #b8ccda);
   margin-bottom: 6px;
 }
 
@@ -305,7 +302,7 @@ body {
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  border: 3px solid var(--border-color, #ccc);
+  border: 3px solid #2a6faa;
   display: block;
   margin: 0 auto 6px;
   overflow: hidden;
@@ -353,23 +350,23 @@ body {
   padding: 5px 10px;
   font-size: 12px;
   font-weight: bold;
-  background: linear-gradient(to bottom, #f0a030, #d07800);
+  background: linear-gradient(to bottom, #3a9c3a, #2a7a2a);
   color: #fff;
-  border: 1px solid #b06000;
+  border: 1px solid #1a5c1a;
   text-decoration: none;
   border-radius: 3px;
   cursor: pointer;
   margin-bottom: 4px;
   box-sizing: border-box;
 }
-.fp-btn:hover { background: linear-gradient(to bottom, #f5b040, #df8800); text-decoration: none; }
+.fp-btn:hover { background: linear-gradient(to bottom, #4aac4a, #358a35); text-decoration: none; }
 .fp-btn:last-child { margin-bottom: 0; }
 
 .fp-btn.secondary {
-  background: linear-gradient(to bottom, #5090d0, #2a6faa);
+  background: linear-gradient(to bottom, #4a88d0, #2a6faa);
   border-color: #1a5090;
 }
-.fp-btn.secondary:hover { background: linear-gradient(to bottom, #60a0e0, #3a7fba); }
+.fp-btn.secondary:hover { background: linear-gradient(to bottom, #5a98e0, #3a7fba); }
 
 .fp-btn.muted {
   background: linear-gradient(to bottom, #888, #666);
@@ -377,7 +374,7 @@ body {
 }
 
 .fp-website-link {
-  color: var(--accent-1);
+  color: #2a6faa;
   word-break: break-all;
   font-size: 11px;
 }
@@ -394,10 +391,9 @@ body {
 }
 
 .fp-hitcounter {
-  text-align: center;
-  padding: 6px 8px;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--border-color, #ccc);
+  padding: 8px;
+  background: var(--card-bg, rgba(255,255,255,0.92));
+  border: 1px solid var(--border-color, #b8ccda);
   margin-bottom: 6px;
 }
 
@@ -423,6 +419,79 @@ body {
   padding: 4px 0 2px;
   opacity: 0.6;
 }
+
+/* ── Integrated Profile Music Bar ────────────────────────────── */
+.fp-music-bar {
+  background: linear-gradient(to right, #1a3a6a, #0e2a4a);
+  border: 1px solid #2a5080;
+  color: #eef4ff;
+  padding: 0;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.fp-music-header {
+  background: #2a5080;
+  color: #fff;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 4px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.fp-music-body {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fp-music-btn {
+  background: #2a6faa;
+  border: 1px solid #1a5090;
+  color: #fff;
+  border-radius: 3px;
+  padding: 3px 9px;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.fp-music-btn:hover { background: #3a7fba; }
+.fp-music-info {
+  flex: 1;
+  min-width: 0;
+}
+.fp-music-title {
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #cce0ff;
+  margin-bottom: 3px;
+}
+.fp-music-progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #5aa0e0;
+}
+.fp-music-vol {
+  width: 44px;
+  height: 4px;
+  accent-color: #5aa0e0;
+  flex-shrink: 0;
+}
+.fp-music-min {
+  background: none;
+  border: none;
+  color: #88aacc;
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+.fp-music-min:hover { color: #cce0ff; }
 
 @media (max-width: 600px) {
   .fp-layout { flex-direction: column; }
