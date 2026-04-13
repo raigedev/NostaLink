@@ -24,7 +24,7 @@ const navItems: NavItem[] = [
     href: "/profile/edit",
     label: "Edit Profile",
     icon: "✏️",
-    activeMatch: (p) => p.endsWith("/edit"),
+    activeMatch: (p) => p.startsWith("/profile/") && p.endsWith("/edit"),
   },
   { href: "/friends", label: "Friends", icon: "👥" },
   { href: "/games", label: "Games", icon: "🎮" },

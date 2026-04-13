@@ -19,5 +19,6 @@ export default async function EditProfileRedirectPage() {
 
   if (profile?.username) redirect(`/profile/${profile.username}/edit`);
 
+  console.warn("No username found for user, redirecting to feed:", user.id);
   redirect("/feed");
 }
