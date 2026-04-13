@@ -129,7 +129,7 @@ export default async function ProfilePage({ params }: Props) {
       <div className="relative w-full" style={{ minHeight: "320px" }}>
         <div
           className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500"
-          aria-hidden
+          aria-hidden={true}
         />
         {profile.cover_url && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -146,7 +146,7 @@ export default async function ProfilePage({ params }: Props) {
             background:
               "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.5) 80%, var(--bg-primary) 100%)",
           }}
-          aria-hidden
+          aria-hidden={true}
         />
         {/* Profile identity block anchored to bottom of hero */}
         <div className="relative z-10 flex items-end gap-5 px-6 md:px-12 pb-6 pt-24">
