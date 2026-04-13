@@ -34,17 +34,18 @@ export default async function ProfilePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   const isOwner = user?.id === profile.id;
 
-  // Fetch friendship status between logged-in user and this profile
+  // Fetch friendship status between logged-in user and this profile.
+  // Check requester→addressee first; only run the reverse query if no record found.
   type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
   let friendshipStatus: FriendshipStatus = "none";
   if (user && !isOwner) {
-    // Two targeted queries using parameterized .eq() to avoid string interpolation
     const { data: asRequester } = await supabase
       .from("friendships")
       .select("id, status, requester_id")
       .eq("requester_id", user.id)
       .eq("addressee_id", profile.id)
       .maybeSingle();
+    // Only query the reverse direction if no record was found above
     const { data: asAddressee } = !asRequester
       ? await supabase
           .from("friendships")

@@ -86,6 +86,7 @@ export default function ProfileConnectButtons({
         disabled={msgPending}
         className="fp-btn secondary"
         style={{ marginTop: "4px" }}
+        aria-label={`Send a message to ${profileUsername}`}
       >
         {msgPending ? "Opening…" : `✉️ Message ${profileUsername}`}
       </button>
