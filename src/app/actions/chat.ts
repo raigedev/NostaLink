@@ -83,3 +83,33 @@ export async function createConversation(otherUserId: string) {
 
   return { conversationId: conv.id };
 }
+
+export async function findOrCreateConversation(otherUserId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  // Find an existing 1-on-1 conversation shared by both users (in parallel)
+  const [{ data: myMemberships }, { data: theirMemberships }] = await Promise.all([
+    supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id),
+    supabase.from("conversation_members").select("conversation_id").eq("user_id", otherUserId),
+  ]);
+
+  if (myMemberships && theirMemberships) {
+    const myIds = new Set(myMemberships.map((m) => m.conversation_id));
+    const sharedIds = theirMemberships
+      .filter((m) => myIds.has(m.conversation_id))
+      .map((m) => m.conversation_id);
+
+    // Confirm the shared conversation is a 1-on-1 (exactly 2 members)
+    for (const convId of sharedIds) {
+      const { count } = await supabase
+        .from("conversation_members")
+        .select("*", { count: "exact", head: true })
+        .eq("conversation_id", convId);
+      if (count === 2) return { conversationId: convId };
+    }
+  }
+
+  return createConversation(otherUserId);
+}
