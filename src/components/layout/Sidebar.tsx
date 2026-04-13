@@ -3,9 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string;
+  activeMatch?: (pathname: string) => boolean;
+}
+
+const navItems: NavItem[] = [
   { href: "/feed", label: "Home", icon: "🏠" },
-  { href: "/profile", label: "Profile", icon: "👤" },
+  {
+    href: "/profile",
+    label: "Profile",
+    icon: "👤",
+    activeMatch: (p) =>
+      p === "/profile" ||
+      (p.startsWith("/profile/") && !p.endsWith("/edit")),
+  },
+  {
+    href: "/profile/edit",
+    label: "Edit Profile",
+    icon: "✏️",
+    activeMatch: (p) => p.endsWith("/edit"),
+  },
   { href: "/friends", label: "Friends", icon: "👥" },
   { href: "/games", label: "Games", icon: "🎮" },
   { href: "/surveys", label: "Surveys", icon: "📊" },
@@ -21,9 +41,10 @@ export default function Sidebar() {
   return (
     <nav className="space-y-1">
       {navItems.map((item) => {
-        const isActive =
-          pathname === item.href ||
-          (item.href !== "/feed" && pathname.startsWith(item.href + "/"));
+        const isActive = item.activeMatch
+          ? item.activeMatch(pathname)
+          : pathname === item.href ||
+            (item.href !== "/feed" && pathname.startsWith(item.href + "/"));
         return (
           <Link
             key={item.href}
