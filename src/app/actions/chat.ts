@@ -101,13 +101,22 @@ export async function findOrCreateConversation(otherUserId: string) {
       .filter((m) => myIds.has(m.conversation_id))
       .map((m) => m.conversation_id);
 
-    // Confirm the shared conversation is a 1-on-1 (exactly 2 members)
-    for (const convId of sharedIds) {
-      const { count } = await supabase
+    if (sharedIds.length > 0) {
+      // Fetch all member counts for shared conversations in a single query
+      const { data: members, error: membersError } = await supabase
         .from("conversation_members")
-        .select("*", { count: "exact", head: true })
-        .eq("conversation_id", convId);
-      if (count === 2) return { conversationId: convId };
+        .select("conversation_id")
+        .in("conversation_id", sharedIds);
+
+      if (!membersError && members) {
+        const countMap: Record<string, number> = {};
+        for (const m of members) {
+          countMap[m.conversation_id] = (countMap[m.conversation_id] ?? 0) + 1;
+        }
+        // Return the first 1-on-1 (exactly 2 members) shared conversation
+        const oneOnOne = sharedIds.find((id) => countMap[id] === 2);
+        if (oneOnOne) return { conversationId: oneOnOne };
+      }
     }
   }
 
