@@ -83,3 +83,42 @@ export async function createConversation(otherUserId: string) {
 
   return { conversationId: conv.id };
 }
+
+export async function findOrCreateConversation(otherUserId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  // Find an existing 1-on-1 conversation shared by both users (in parallel)
+  const [{ data: myMemberships }, { data: theirMemberships }] = await Promise.all([
+    supabase.from("conversation_members").select("conversation_id").eq("user_id", user.id),
+    supabase.from("conversation_members").select("conversation_id").eq("user_id", otherUserId),
+  ]);
+
+  if (myMemberships && theirMemberships) {
+    const myIds = new Set(myMemberships.map((m) => m.conversation_id));
+    const sharedIds = theirMemberships
+      .filter((m) => myIds.has(m.conversation_id))
+      .map((m) => m.conversation_id);
+
+    if (sharedIds.length > 0) {
+      // Fetch all member counts for shared conversations in a single query
+      const { data: members, error: membersError } = await supabase
+        .from("conversation_members")
+        .select("conversation_id")
+        .in("conversation_id", sharedIds);
+
+      if (!membersError && members) {
+        const countMap: Record<string, number> = {};
+        for (const m of members) {
+          countMap[m.conversation_id] = (countMap[m.conversation_id] ?? 0) + 1;
+        }
+        // Return the first 1-on-1 (exactly 2 members) shared conversation
+        const oneOnOne = sharedIds.find((id) => countMap[id] === 2);
+        if (oneOnOne) return { conversationId: oneOnOne };
+      }
+    }
+  }
+
+  return createConversation(otherUserId);
+}
