@@ -2,18 +2,25 @@
 
 interface Props {
   count: number;
+  memberSince?: string | null;
 }
 
-export default function HitCounterWidget({ count }: Props) {
-  const digits = String(count).padStart(6, "0").split("");
+export default function HitCounterWidget({ count, memberSince }: Props) {
+  const joined = memberSince
+    ? new Date(memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+    : null;
   return (
-    <div className="flex flex-col items-center">
-      <p className="text-xs opacity-60 mb-1">Profile Views</p>
-      <div className="retro-counter">
-        {digits.map((d, i) => (
-          <span key={i} className="retro-digit">{d}</span>
-        ))}
+    <div className="fp-stat-row">
+      <div className="fp-stat-item">
+        <span className="fp-stat-label">Profile Views</span>
+        <span className="fp-stat-value">{count.toLocaleString()}</span>
       </div>
+      {joined && (
+        <div className="fp-stat-item">
+          <span className="fp-stat-label">Member Since</span>
+          <span className="fp-stat-value">{joined}</span>
+        </div>
+      )}
     </div>
   );
 }

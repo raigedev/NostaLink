@@ -222,7 +222,7 @@ export default async function ProfilePage({ params }: Props) {
 
             {/* Social actions */}
             <div className="fp-section">
-              <div className="fp-section-header orange">Connect</div>
+              <div className="fp-section-header green">Connect</div>
               <div className="fp-section-body">
                 {isOwner ? (
                   <Link href={`/profile/${username}/edit`} className="fp-btn">
@@ -253,7 +253,7 @@ export default async function ProfilePage({ params }: Props) {
 
             {/* Hit counter */}
             <div className="fp-hitcounter">
-              <HitCounterWidget count={profile.hit_count || 0} />
+              <HitCounterWidget count={profile.hit_count || 0} memberSince={profile.created_at} />
             </div>
 
           </aside>
@@ -261,10 +261,18 @@ export default async function ProfilePage({ params }: Props) {
           {/* ── RIGHT COLUMN ── */}
           <main className="fp-right">
 
+            {/* Profile music — integrated identity element */}
+            {profile.profile_song_url && (
+              <MusicPlayer
+                src={profile.profile_song_url}
+                title={profile.display_name ?? profile.username}
+              />
+            )}
+
             {/* About Me */}
             {profile.bio && (
               <div className="fp-section">
-                <div className="fp-section-header orange">About Me</div>
+                <div className="fp-section-header blue">About Me</div>
                 <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>
                   {profile.bio}
                 </div>
@@ -301,13 +309,6 @@ export default async function ProfilePage({ params }: Props) {
           </main>
         </div>
       </div>
-
-      {profile.profile_song_url && (
-        <MusicPlayer
-          src={profile.profile_song_url}
-          title={profile.display_name ?? profile.username}
-        />
-      )}
 
       <HitCountTracker profileId={profile.id} />
 
