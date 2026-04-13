@@ -306,13 +306,27 @@ body {
   height: 110px;
   border-radius: 50%;
   border: 3px solid var(--border-color, #ccc);
-  object-fit: cover;
   display: block;
   margin: 0 auto 6px;
   overflow: hidden;
   background: #dde;
   font-size: 40px;
   line-height: 110px;
+  text-align: center;
+}
+
+.fp-avatar-img-inner {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fp-avatar-placeholder {
+  display: block;
+  font-size: 40px;
+  line-height: 110px;
+  text-align: center;
 }
 
 .fp-display-name {
@@ -360,6 +374,16 @@ body {
 .fp-btn.muted {
   background: linear-gradient(to bottom, #888, #666);
   border-color: #555;
+}
+
+.fp-website-link {
+  color: var(--accent-1);
+  word-break: break-all;
+  font-size: 11px;
+}
+
+.fp-relationship-status {
+  text-transform: capitalize;
 }
 
 .fp-degrees {

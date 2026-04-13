@@ -10,6 +10,7 @@ import ShoutboxWidget from "@/components/profile/widgets/ShoutboxWidget";
 import Top8FriendsWidget from "@/components/profile/widgets/Top8FriendsWidget";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
+import { degreesLabel, formatRelationshipStatus } from "@/lib/utils";
 import Link from "next/link";
 
 interface Props {
@@ -21,13 +22,6 @@ interface Friend {
   username: string;
   display_name: string | null;
   avatar_url: string | null;
-}
-
-function degreesLabel(degrees: number | null): string | null {
-  if (degrees === null) return null;
-  if (degrees === 1) return "👥 Direct friend";
-  if (degrees === 2) return "🔗 Friend of a friend";
-  return `🔗 ${degrees} degrees away`;
 }
 
 export default async function ProfilePage({ params }: Props) {
@@ -121,7 +115,7 @@ export default async function ProfilePage({ params }: Props) {
 
         {/* Profile header banner */}
         <div className="fp-banner">
-          <h1>{profile.display_name || profile.username}&apos;s Profile</h1>
+          <h1>{(profile.display_name || profile.username) + "'s Profile"}</h1>
         </div>
 
         {/* Two-column layout */}
@@ -138,10 +132,10 @@ export default async function ProfilePage({ params }: Props) {
                   <img
                     src={profile.avatar_url}
                     alt="Avatar"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                    className="fp-avatar-img-inner"
                   />
                 ) : (
-                  <span style={{ fontSize: "40px", lineHeight: "110px", display: "block", textAlign: "center" }}>👤</span>
+                  <span className="fp-avatar-placeholder">👤</span>
                 )}
               </div>
               <div className="fp-display-name">{profile.display_name || profile.username}</div>
@@ -165,8 +159,8 @@ export default async function ProfilePage({ params }: Props) {
                   {profile.relationship_status && (
                     <div className="fp-details-row">
                       <span>💕</span>
-                      <span style={{ textTransform: "capitalize" }}>
-                        {profile.relationship_status.replace(/_/g, " ")}
+                      <span className="fp-relationship-status">
+                        {formatRelationshipStatus(profile.relationship_status)}
                       </span>
                     </div>
                   )}
@@ -183,7 +177,7 @@ export default async function ProfilePage({ params }: Props) {
                         href={profile.website}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: "var(--accent-1)", wordBreak: "break-all", fontSize: "11px" }}
+                        className="fp-website-link"
                       >
                         {profile.website}
                       </a>
