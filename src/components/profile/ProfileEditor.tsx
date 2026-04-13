@@ -15,6 +15,7 @@ import {
   updateCustomHtml,
 } from "@/app/actions/profile";
 import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, USERNAME_PATTERN } from "@/lib/validations";
+import { validateMusicUrl } from "@/lib/musicProvider";
 import ThemeSelector from "./ThemeSelector";
 import FontSelector from "./FontSelector";
 import CSSEditor from "./CSSEditor";
@@ -401,9 +402,29 @@ function MusicTab({
   onSaveUrl: (url: string) => void;
 }) {
   const [url, setUrl] = useState(currentUrl);
+  const [urlError, setUrlError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setUrl(e.target.value);
+    setUrlError(null);
+  }
+
+  function handleSaveUrl() {
+    if (!url.trim()) {
+      // Allow clearing the music source.
+      onSaveUrl("");
+      return;
+    }
+    const result = validateMusicUrl(url.trim());
+    if (!result.valid) {
+      setUrlError(result.error ?? "Invalid URL");
+      return;
+    }
+    onSaveUrl(url.trim());
+  }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -424,13 +445,66 @@ function MusicTab({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-gray-600">
-        Upload an audio file or paste a direct URL to play on your profile.
-        Supported: MP3, OGG, WAV (max 15MB).
-      </p>
-      <div className="space-y-3">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Upload Audio File</label>
+      {/* ── Primary: provider link ─────────────────────────────────── */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Profile Music Source</h3>
+        <p className="text-sm text-gray-500 mb-3">
+          Paste a link from one of the supported providers below. Visitors will
+          see a compact music widget on your profile with a click-to-play button.
+        </p>
+
+        {/* Supported providers */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[
+            { label: "YouTube", color: "bg-red-50 text-red-700 border-red-200" },
+            { label: "SoundCloud", color: "bg-orange-50 text-orange-700 border-orange-200" },
+            { label: "Spotify", color: "bg-green-50 text-green-700 border-green-200" },
+          ].map(({ label, color }) => (
+            <span
+              key={label}
+              className={`px-2 py-0.5 rounded text-xs font-medium border ${color}`}
+            >
+              ✓ {label}
+            </span>
+          ))}
+        </div>
+
+        <input
+          type="url"
+          value={url}
+          onChange={handleUrlChange}
+          placeholder="https://open.spotify.com/track/… or youtube.com/watch?v=…"
+          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            urlError ? "border-red-400" : "border-gray-300"
+          }`}
+        />
+        {urlError && (
+          <p className="text-xs text-red-600 mt-1">{urlError}</p>
+        )}
+        {url && !urlError && (
+          <p className="text-xs text-green-600 mt-1">✓ URL entered</p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSaveUrl}
+          className="mt-3 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+        >
+          Save Music
+        </button>
+      </div>
+
+      {/* ── Secondary: original audio upload (de-emphasised) ────────── */}
+      <details className="border border-gray-200 rounded-lg">
+        <summary className="px-4 py-2 text-xs font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700">
+          ▸ Upload original / licensed audio instead
+        </summary>
+        <div className="px-4 py-3 space-y-2 border-t border-gray-100">
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            ⚠️ Only upload audio you created or have an explicit license to use.
+            Do not upload copyrighted music you don&apos;t own.
+          </p>
+          <p className="text-xs text-gray-500">Supported: MP3, OGG, WAV (max 15 MB)</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -440,9 +514,13 @@ function MusicTab({
             >
               {uploading ? "Uploading…" : "Choose File"}
             </button>
-            {url && !uploading && <span className="text-xs text-green-600">✓ Audio set</span>}
+            {url && !uploading && (
+              <span className="text-xs text-green-600">✓ Audio set</span>
+            )}
           </div>
-          {uploadError && <p className="text-xs text-red-600 mt-1">{uploadError}</p>}
+          {uploadError && (
+            <p className="text-xs text-red-600">{uploadError}</p>
+          )}
           <input
             ref={inputRef}
             type="file"
@@ -451,31 +529,7 @@ function MusicTab({
             onChange={handleFileUpload}
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Or paste a URL</label>
-          <input
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com/song.mp3"
-            className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        {url && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Preview</label>
-            {/* Audio preview for selected file */}
-            <audio controls src={url} className="w-full" />
-          </div>
-        )}
-        <button
-          type="button"
-          onClick={() => onSaveUrl(url)}
-          className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-        >
-          Save Music URL
-        </button>
-      </div>
+      </details>
     </div>
   );
 }

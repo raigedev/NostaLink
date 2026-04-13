@@ -517,7 +517,68 @@ body {
 }
 .fp-music-min:hover { color: #cce0ff; }
 
-/* ── Music Playlist Widget (collapsible) ─────────────────────── */
+/* Provider badge shown in the header row */
+.fp-music-provider-badge {
+  font-size: 10px;
+  color: #88aacc;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(100,150,220,0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Expandable body that holds the embed or direct-audio controls */
+.fp-music-body {
+  padding: 4px 8px 6px;
+  border-top: 1px solid rgba(60, 100, 185, 0.25);
+}
+
+/* Wrapper around a provider iframe embed */
+.fp-music-embed {
+  width: 100%;
+  overflow: hidden;
+}
+.fp-music-embed iframe {
+  display: block;
+  border: 0;
+}
+
+/* First-visit reveal area */
+.fp-music-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.fp-music-reveal-btn {
+  background: #2a6faa;
+  border: 1px solid #1a5090;
+  color: #fff;
+  border-radius: 4px;
+  padding: 4px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fp-music-reveal-btn:hover { background: #3a7fba; }
+
+/* Subtle hint text shown on first visit */
+.fp-music-hint {
+  font-size: 10px;
+  color: #88aacc;
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* Inline controls row for direct-audio sources */
+.fp-music-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
 .fp-music-playlist-toggle {
   width: 100%;
   text-align: left;
