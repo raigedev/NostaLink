@@ -14,16 +14,17 @@ export default function MusicPlayer({ src, title }: Props) {
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Attempt autoplay on mount; gracefully handle browser autoplay blocks
+  // Attempt autoplay on mount; gracefully handle browser autoplay blocks.
+  // Volume is intentionally set to the initial value (0.5) here — the effect
+  // runs once on mount and should not re-run when the volume slider changes.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = volume;
+    audio.volume = 0.5;
     audio.play().then(() => setPlaying(true)).catch(() => {
       // Browser blocked autoplay — user must interact to start playback
       setPlaying(false);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function togglePlay() {
@@ -64,7 +65,7 @@ export default function MusicPlayer({ src, title }: Props) {
       />
       {/* Single compact row — label · play · [progress · volume when expanded] · toggle */}
       <div className="fp-music-row">
-        <span className="fp-music-label">🎵 {title}&apos;s song</span>
+        <span className="fp-music-label">🎵 {title}'s song</span>
         <button onClick={togglePlay} className="fp-music-btn" title={playing ? "Pause" : "Play"}>
           {playing ? "⏸" : "▶"}
         </button>
@@ -94,6 +95,7 @@ export default function MusicPlayer({ src, title }: Props) {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="fp-music-min"
+          aria-label={collapsed ? "Expand music controls" : "Collapse music controls"}
           title={collapsed ? "Expand controls" : "Collapse controls"}
         >
           {collapsed ? "▶▶" : "▼"}
