@@ -84,13 +84,22 @@ export default async function ProfilePage({ params }: Props) {
   type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "friends";
   let friendshipStatus: FriendshipStatus = "none";
   if (user && !isOwner) {
-    const { data: friendship } = await supabase
-      .from("friendships")
-      .select("id, requester_id, addressee_id, status")
-      .or(
-        `and(requester_id.eq.${user.id},addressee_id.eq.${profile.id}),and(requester_id.eq.${profile.id},addressee_id.eq.${user.id})`
-      )
-      .maybeSingle();
+    // Use two separate queries instead of string-interpolated .or() to avoid injection risk
+    const [{ data: sentRequest }, { data: receivedRequest }] = await Promise.all([
+      supabase
+        .from("friendships")
+        .select("id, requester_id, addressee_id, status")
+        .eq("requester_id", user.id)
+        .eq("addressee_id", profile.id)
+        .maybeSingle(),
+      supabase
+        .from("friendships")
+        .select("id, requester_id, addressee_id, status")
+        .eq("requester_id", profile.id)
+        .eq("addressee_id", user.id)
+        .maybeSingle(),
+    ]);
+    const friendship = sentRequest ?? receivedRequest;
     if (friendship) {
       if (friendship.status === "accepted") {
         friendshipStatus = "friends";

@@ -25,10 +25,13 @@ export default function SendMessageButton({ profileId }: Props) {
             const result = await findOrCreateConversation(profileId);
             if (result.conversationId) {
               router.push(`/chat/${result.conversationId}`);
+              // Do not reset loading — navigation will unmount this component
             } else {
               setError("Could not open chat. Please try again.");
+              setLoading(false);
             }
-          } finally {
+          } catch {
+            setError("Could not open chat. Please try again.");
             setLoading(false);
           }
         }}
