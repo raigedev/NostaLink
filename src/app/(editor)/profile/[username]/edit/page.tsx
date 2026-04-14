@@ -16,9 +16,5 @@ export default async function EditProfilePage({ params }: Props) {
   const profile = await getProfile(username);
   if (!profile || profile.id !== user.id) redirect(`/profile/${username}`);
 
-  return (
-    <div className="max-w-none">
-      <EditProfileLayout profile={profile} />
-    </div>
-  );
+  return <EditProfileLayout profile={profile} />;
 }
