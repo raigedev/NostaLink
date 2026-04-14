@@ -235,7 +235,7 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
         {/* ── Tab 1: Basic Info ───────────────────────────────────────── */}
         {activeTab === "Basic Info" && (
           <form onSubmit={handleBasicSave} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Avatar</label>
                 <FileUploadButton
@@ -272,7 +272,7 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
                   className="w-full px-2 py-1.5 border rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">Lowercase, numbers, underscores. 3–30 chars.</p>
+              <p className="text-xs text-gray-400 mt-0.5">Lowercase, numbers, underscores. 3–30 characters.</p>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Display Name</label>
@@ -512,7 +512,7 @@ function MusicTab({
     const result = await uploadProfileAudio(fd);
     setUploading(false);
     if (!result || "error" in result) {
-      setUploadError(result && "error" in result ? result.error : "Upload failed");
+      setUploadError(result && "error" in result ? (result.error ?? "Upload failed") : "Upload failed");
     } else if ("url" in result && result.url) {
       setUrl(result.url);
       onSaveUrl(result.url);
