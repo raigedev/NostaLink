@@ -50,9 +50,22 @@ export default function EditProfileLayout({ profile }: Props) {
     e.preventDefault();
   }
 
+  function handleResizeKey(e: React.KeyboardEvent) {
+    const STEP = 20;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setEditorHeight((h) => Math.min(MAX_EDITOR_HEIGHT, h + STEP));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setEditorHeight((h) => Math.max(MIN_EDITOR_HEIGHT, h - STEP));
+    }
+  }
+
   useEffect(() => {
     function onMove(e: MouseEvent | TouchEvent) {
       if (!dragging.current) return;
+      // Prevent page scroll while dragging the resize handle
+      e.preventDefault();
       const clientY = "touches" in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
       const delta = clientY - dragStartY.current;
       const newH = Math.min(MAX_EDITOR_HEIGHT, Math.max(MIN_EDITOR_HEIGHT, dragStartH.current + delta));
@@ -62,6 +75,8 @@ export default function EditProfileLayout({ profile }: Props) {
       dragging.current = false;
     }
     window.addEventListener("mousemove", onMove);
+    // passive: false is required so we can call preventDefault() to suppress
+    // native scroll while dragging the resize handle on touch devices.
     window.addEventListener("touchmove", onMove, { passive: false });
     window.addEventListener("mouseup", onUp);
     window.addEventListener("touchend", onUp);
@@ -145,10 +160,15 @@ export default function EditProfileLayout({ profile }: Props) {
         <div
           role="separator"
           aria-label="Drag to resize panels"
-          title="Drag to resize"
-          className="flex-shrink-0 h-2.5 bg-gray-200 hover:bg-indigo-200 active:bg-indigo-300 cursor-row-resize flex items-center justify-center transition-colors select-none z-10 group"
+          aria-valuenow={editorHeight}
+          aria-valuemin={MIN_EDITOR_HEIGHT}
+          aria-valuemax={MAX_EDITOR_HEIGHT}
+          tabIndex={0}
+          title="Drag or use ↑/↓ keys to resize"
+          className="flex-shrink-0 h-2.5 bg-gray-200 hover:bg-indigo-200 active:bg-indigo-300 cursor-row-resize flex items-center justify-center transition-colors select-none z-10 group focus:outline-none focus:bg-indigo-200"
           onMouseDown={startDrag}
           onTouchStart={startDrag}
+          onKeyDown={handleResizeKey}
         >
           <div className="w-14 h-1 rounded-full bg-gray-400 group-hover:bg-indigo-400 transition-colors" />
         </div>
