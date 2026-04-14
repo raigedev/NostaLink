@@ -27,6 +27,8 @@ import Top8Editor from "./Top8Editor";
 
 interface Props {
   profile: Profile;
+  /** Called whenever the in-editor draft changes so a parent can show a live preview */
+  onDraftChange?: (draft: Partial<Profile>) => void;
 }
 
 const tabs = [
@@ -44,11 +46,13 @@ function FileUploadButton({
   accept,
   onUpload,
   currentUrl,
+  onUrlChange,
 }: {
   label: string;
   accept: string;
   onUpload: (formData: FormData) => Promise<{ success?: boolean; url?: string; error?: string } | null>;
   currentUrl?: string | null;
+  onUrlChange?: (url: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -68,6 +72,7 @@ function FileUploadButton({
       setError((result && "error" in result ? result.error : null) ?? "Upload failed");
     } else if ("url" in result && result.url) {
       setUrl(result.url as string);
+      onUrlChange?.(result.url as string);
     }
   }
 
@@ -96,11 +101,42 @@ function FileUploadButton({
 
 export type WidgetConfig = import("@/types/widget").WidgetConfig;
 
-export default function ProfileEditor({ profile }: Props) {
+export default function ProfileEditor({ profile, onDraftChange }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Basic Info");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  // ── Draft state for live preview ──────────────────────────────────────────
+  // Using a ref (not state) since the draft doesn't need to re-render this
+  // component — the parent's ProfilePreviewPanel handles that.
+  const draftRef = useRef<Partial<Profile>>({
+    username: profile.username,
+    display_name: profile.display_name,
+    bio: profile.bio,
+    mood: profile.mood,
+    headline: profile.headline,
+    location: profile.location,
+    website: profile.website,
+    relationship_status: profile.relationship_status,
+    avatar_url: profile.avatar_url,
+    cover_url: profile.cover_url,
+    theme_id: profile.theme_id,
+    font_id: profile.font_id,
+    bg_url: profile.bg_url,
+    bg_mode: profile.bg_mode,
+    bg_color: profile.bg_color,
+    custom_css: profile.custom_css,
+    custom_html: profile.custom_html,
+    profile_song_url: profile.profile_song_url,
+    widgets: profile.widgets,
+    top_friends: profile.top_friends,
+  });
+
+  function updateDraft(updates: Partial<Profile>) {
+    draftRef.current = { ...draftRef.current, ...updates };
+    onDraftChange?.(draftRef.current);
+  }
 
   const showMessage = useCallback((msg: string) => {
     setMessage(msg);
@@ -118,6 +154,7 @@ export default function ProfileEditor({ profile }: Props) {
     } else {
       showMessage("Saved!");
       if (result?.newUsername) {
+        updateDraft({ username: result.newUsername });
         router.push(`/profile/${result.newUsername}/edit`);
       }
     }
@@ -149,6 +186,7 @@ export default function ProfileEditor({ profile }: Props) {
     const result = await updateWidgets(widgets);
     setSaving(false);
     showMessage(result?.error ?? "Widgets saved!");
+    if (!result?.error) updateDraft({ widgets });
   }
 
   async function handleTopFriendsSave(ids: string[]) {
@@ -156,6 +194,7 @@ export default function ProfileEditor({ profile }: Props) {
     const result = await updateTopFriends(ids);
     setSaving(false);
     showMessage(result?.error ?? "Top friends saved!");
+    if (!result?.error) updateDraft({ top_friends: ids });
   }
 
   const isSuccess = (msg: string) =>
@@ -204,6 +243,7 @@ export default function ProfileEditor({ profile }: Props) {
                   accept="image/*"
                   currentUrl={profile.avatar_url}
                   onUpload={uploadAvatar}
+                  onUrlChange={(url) => updateDraft({ avatar_url: url })}
                 />
               </div>
               <div>
@@ -213,6 +253,7 @@ export default function ProfileEditor({ profile }: Props) {
                   accept="image/*"
                   currentUrl={profile.cover_url}
                   onUpload={uploadCoverPhoto}
+                  onUrlChange={(url) => updateDraft({ cover_url: url })}
                 />
               </div>
             </div>
@@ -227,6 +268,7 @@ export default function ProfileEditor({ profile }: Props) {
                   maxLength={USERNAME_MAX_LENGTH}
                   pattern={USERNAME_PATTERN}
                   title="Lowercase letters, numbers, and underscores only"
+                  onChange={(e) => updateDraft({ username: e.target.value })}
                   className="w-full px-3 py-2 border rounded-r-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -238,6 +280,7 @@ export default function ProfileEditor({ profile }: Props) {
                 name="display_name"
                 defaultValue={profile.display_name ?? ""}
                 maxLength={50}
+                onChange={(e) => updateDraft({ display_name: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -248,6 +291,7 @@ export default function ProfileEditor({ profile }: Props) {
                 defaultValue={profile.bio ?? ""}
                 rows={4}
                 maxLength={500}
+                onChange={(e) => updateDraft({ bio: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               />
             </div>
@@ -258,6 +302,7 @@ export default function ProfileEditor({ profile }: Props) {
                 defaultValue={profile.mood ?? ""}
                 placeholder="e.g. 💖 Feeling nostalgic"
                 maxLength={100}
+                onChange={(e) => updateDraft({ mood: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -267,6 +312,7 @@ export default function ProfileEditor({ profile }: Props) {
                 name="headline"
                 defaultValue={profile.headline ?? ""}
                 maxLength={150}
+                onChange={(e) => updateDraft({ headline: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -276,6 +322,7 @@ export default function ProfileEditor({ profile }: Props) {
                 name="location"
                 defaultValue={profile.location ?? ""}
                 maxLength={100}
+                onChange={(e) => updateDraft({ location: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -285,6 +332,7 @@ export default function ProfileEditor({ profile }: Props) {
                 name="website"
                 type="url"
                 defaultValue={profile.website ?? ""}
+                onChange={(e) => updateDraft({ website: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -293,6 +341,7 @@ export default function ProfileEditor({ profile }: Props) {
               <select
                 name="relationship_status"
                 defaultValue={profile.relationship_status ?? ""}
+                onChange={(e) => updateDraft({ relationship_status: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Prefer not to say</option>
@@ -319,19 +368,28 @@ export default function ProfileEditor({ profile }: Props) {
               <h3 className="font-semibold mb-3">Theme</h3>
               <ThemeSelector
                 current={profile.theme_id ?? "minimalist"}
-                onSelect={(id) => handleCustomSave({ theme_id: id })}
+                onSelect={(id) => {
+                  updateDraft({ theme_id: id });
+                  handleCustomSave({ theme_id: id });
+                }}
               />
             </div>
             <div>
               <h3 className="font-semibold mb-3">Font</h3>
               <FontSelector
                 current={profile.font_id ?? "inter"}
-                onSelect={(id) => handleCustomSave({ font_id: id })}
+                onSelect={(id) => {
+                  updateDraft({ font_id: id });
+                  handleCustomSave({ font_id: id });
+                }}
               />
             </div>
             <div>
               <h3 className="font-semibold mb-3">Color Scheme</h3>
-              <ColorSchemeEditor onSave={(colors) => handleCustomSave(colors)} />
+              <ColorSchemeEditor onSave={(colors) => {
+                updateDraft(colors);
+                handleCustomSave(colors);
+              }} />
             </div>
             <div>
               <h3 className="font-semibold mb-3">Background</h3>
@@ -339,7 +397,10 @@ export default function ProfileEditor({ profile }: Props) {
                 currentUrl={profile.bg_url ?? ""}
                 currentMode={profile.bg_mode ?? "tiled"}
                 currentColor={profile.bg_color ?? ""}
-                onSave={(data) => handleCustomSave(data)}
+                onSave={(data) => {
+                  updateDraft(data);
+                  handleCustomSave(data);
+                }}
               />
             </div>
           </div>
@@ -350,7 +411,11 @@ export default function ProfileEditor({ profile }: Props) {
           <CSSEditor
             defaultValue={profile.custom_css ?? ""}
             userId={profile.id}
-            onSave={handleCssSave}
+            onSave={(css) => {
+              updateDraft({ custom_css: css });
+              handleCssSave(css);
+            }}
+            onChange={(css) => updateDraft({ custom_css: css })}
           />
         )}
 
@@ -358,7 +423,11 @@ export default function ProfileEditor({ profile }: Props) {
         {activeTab === "Custom HTML" && (
           <HTMLEditor
             defaultValue={profile.custom_html ?? ""}
-            onSave={handleHtmlSave}
+            onSave={(html) => {
+              updateDraft({ custom_html: html });
+              handleHtmlSave(html);
+            }}
+            onChange={(html) => updateDraft({ custom_html: html })}
           />
         )}
 
@@ -366,7 +435,11 @@ export default function ProfileEditor({ profile }: Props) {
         {activeTab === "Music" && (
           <MusicTab
             currentUrl={profile.profile_song_url ?? ""}
-            onSaveUrl={(url) => handleCustomSave({ profile_song_url: url })}
+            onSaveUrl={(url) => {
+              updateDraft({ profile_song_url: url });
+              handleCustomSave({ profile_song_url: url });
+            }}
+            onUrlChange={(url) => updateDraft({ profile_song_url: url })}
           />
         )}
 
@@ -397,9 +470,11 @@ export default function ProfileEditor({ profile }: Props) {
 function MusicTab({
   currentUrl,
   onSaveUrl,
+  onUrlChange,
 }: {
   currentUrl: string;
   onSaveUrl: (url: string) => void;
+  onUrlChange?: (url: string) => void;
 }) {
   const [url, setUrl] = useState(currentUrl);
   const [urlError, setUrlError] = useState<string | null>(null);
@@ -410,6 +485,7 @@ function MusicTab({
   function handleUrlChange(e: React.ChangeEvent<HTMLInputElement>) {
     setUrl(e.target.value);
     setUrlError(null);
+    onUrlChange?.(e.target.value);
   }
 
   function handleSaveUrl() {

@@ -6,15 +6,21 @@ import { sanitizeHTML, MAX_HTML_LENGTH } from "@/lib/sanitize";
 interface Props {
   defaultValue: string;
   onSave: (html: string) => void;
+  onChange?: (html: string) => void;
 }
 
-export default function HTMLEditor({ defaultValue, onSave }: Props) {
+export default function HTMLEditor({ defaultValue, onSave, onChange }: Props) {
   const [value, setValue] = useState(defaultValue);
   const [showPreview, setShowPreview] = useState(false);
   const [preview, setPreview] = useState("");
 
   const charCount = value.length;
   const overLimit = charCount > MAX_HTML_LENGTH;
+
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setValue(e.target.value);
+    onChange?.(e.target.value);
+  }
 
   function handlePreview() {
     setPreview(sanitizeHTML(value));
@@ -29,7 +35,7 @@ export default function HTMLEditor({ defaultValue, onSave }: Props) {
       </p>
       <textarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         rows={14}
         className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-gray-950 text-green-400"
         placeholder='<div class="my-widget">Hello!</div>'
