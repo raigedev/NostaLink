@@ -10,31 +10,33 @@ interface Props {
   profile: Profile;
 }
 
-const MIN_EDITOR_HEIGHT = 120;
-const MAX_EDITOR_HEIGHT = 520;
-const DEFAULT_EDITOR_HEIGHT = 260;
+const MIN_PANEL_WIDTH = 280;
+const MAX_PANEL_WIDTH = 600;
+const DEFAULT_PANEL_WIDTH = 360;
 
 /**
  * Full-screen profile customization workspace.
  *
  * Desktop layout:
- *   ┌─────────────────────────────────────────────────────────┐
- *   │  Top bar: ← Back | Edit Profile | unsaved indicator     │
- *   ├─────────────────────────────────────────────────────────┤
- *   │  Tools panel (top-docked, resizable height)             │
- *   ╠═════════════════════════════════════════════════════════╣  ← drag handle
- *   │  Large live profile preview (dominant, full-width)      │
- *   └─────────────────────────────────────────────────────────┘
+ *   ┌────────────────────────────────────────────────────────────────┐
+ *   │  Top bar: ← Back | Edit Profile | unsaved indicator           │
+ *   ├──────────────────────────────────────┬─────────┬──────────────┤
+ *   │                                      │  drag   │  Tools panel │
+ *   │  Large live profile preview          │  handle │  (right,     │
+ *   │  (dominant, fills remaining space)   │    ◀▶   │  resizable,  │
+ *   │                                      │         │  collapsible)│
+ *   └──────────────────────────────────────┴─────────┴──────────────┘
  *
  * Mobile: toggle between Editor and Preview.
  */
 export default function EditProfileLayout({ profile }: Props) {
   const [draft, setDraft] = useState<Partial<Profile>>({});
   const [activeView, setActiveView] = useState<"editor" | "preview">("editor");
-  const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT);
+  const [panelWidth, setPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const dragging = useRef(false);
-  const dragStartY = useRef(0);
-  const dragStartH = useRef(0);
+  const dragStartX = useRef(0);
+  const dragStartW = useRef(0);
 
   const handleDraftChange = useCallback((newDraft: Partial<Profile>) => {
     setDraft(newDraft);
@@ -42,22 +44,24 @@ export default function EditProfileLayout({ profile }: Props) {
 
   const hasUnsavedChanges = Object.keys(draft).length > 0;
 
-  // ── Resize drag logic ────────────────────────────────────────────────────
+  // ── Resize drag logic (horizontal) ──────────────────────────────────────
   function startDrag(e: React.MouseEvent | React.TouchEvent) {
+    if (isCollapsed) return;
     dragging.current = true;
-    dragStartY.current = "touches" in e ? e.touches[0].clientY : e.clientY;
-    dragStartH.current = editorHeight;
+    dragStartX.current = "touches" in e ? e.touches[0].clientX : e.clientX;
+    dragStartW.current = panelWidth;
     e.preventDefault();
   }
 
   function handleResizeKey(e: React.KeyboardEvent) {
+    if (isCollapsed) return;
     const STEP = 20;
-    if (e.key === "ArrowDown") {
+    if (e.key === "ArrowRight") {
       e.preventDefault();
-      setEditorHeight((h) => Math.min(MAX_EDITOR_HEIGHT, h + STEP));
-    } else if (e.key === "ArrowUp") {
+      setPanelWidth((w) => Math.min(MAX_PANEL_WIDTH, w + STEP));
+    } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      setEditorHeight((h) => Math.max(MIN_EDITOR_HEIGHT, h - STEP));
+      setPanelWidth((w) => Math.max(MIN_PANEL_WIDTH, w - STEP));
     }
   }
 
@@ -66,10 +70,11 @@ export default function EditProfileLayout({ profile }: Props) {
       if (!dragging.current) return;
       // Prevent page scroll while dragging the resize handle
       e.preventDefault();
-      const clientY = "touches" in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-      const delta = clientY - dragStartY.current;
-      const newH = Math.min(MAX_EDITOR_HEIGHT, Math.max(MIN_EDITOR_HEIGHT, dragStartH.current + delta));
-      setEditorHeight(newH);
+      const clientX = "touches" in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      // Dragging left increases panel width (handle is on the left edge of the panel)
+      const delta = dragStartX.current - clientX;
+      const newW = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, dragStartW.current + delta));
+      setPanelWidth(newW);
     }
     function onUp() {
       dragging.current = false;
@@ -143,39 +148,53 @@ export default function EditProfileLayout({ profile }: Props) {
         </div>
       </header>
 
-      {/* ── Desktop workspace: top tools + full-width preview below ─ */}
-      <div className="hidden lg:flex lg:flex-col flex-1 min-h-0 overflow-hidden">
+      {/* ── Desktop workspace: preview on left + tools panel on right ─ */}
+      <div className="hidden lg:flex lg:flex-row flex-1 min-h-0 overflow-hidden">
 
-        {/* ── Editor tools panel (top-docked, resizable) ──────────── */}
-        <div
-          className="flex-shrink-0 bg-white border-b border-gray-200 overflow-y-auto"
-          style={{ height: editorHeight }}
-        >
-          <div className="p-3">
-            <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
-          </div>
+        {/* ── Preview canvas (fills remaining space on the left) ────── */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          <ProfilePreviewPanel profile={profile} draftOverrides={draft} />
         </div>
 
-        {/* ── Resize drag handle ───────────────────────────────────── */}
+        {/* ── Resize drag handle (vertical bar between preview & panel) */}
         <div
           role="separator"
-          aria-label="Drag to resize panels"
-          aria-valuenow={editorHeight}
-          aria-valuemin={MIN_EDITOR_HEIGHT}
-          aria-valuemax={MAX_EDITOR_HEIGHT}
+          aria-label="Drag to resize tools panel"
+          aria-valuenow={isCollapsed ? 0 : panelWidth}
+          aria-valuemin={MIN_PANEL_WIDTH}
+          aria-valuemax={MAX_PANEL_WIDTH}
+          aria-orientation="vertical"
           tabIndex={0}
-          title="Drag or use ↑/↓ keys to resize"
-          className="flex-shrink-0 h-2.5 bg-gray-200 hover:bg-indigo-200 active:bg-indigo-300 cursor-row-resize flex items-center justify-center transition-colors select-none z-10 group focus:outline-none focus:bg-indigo-200"
+          title={isCollapsed ? "Tools panel is collapsed" : "Drag or use ←/→ keys to resize"}
+          className={`flex-shrink-0 w-2.5 bg-gray-200 hover:bg-indigo-200 active:bg-indigo-300 flex flex-col items-center justify-center transition-colors select-none z-10 group focus:outline-none focus:bg-indigo-200 relative ${isCollapsed ? "cursor-default" : "cursor-col-resize"}`}
           onMouseDown={startDrag}
           onTouchStart={startDrag}
           onKeyDown={handleResizeKey}
         >
-          <div className="w-14 h-1 rounded-full bg-gray-400 group-hover:bg-indigo-400 transition-colors" />
+          <div className="h-14 w-1 rounded-full bg-gray-400 group-hover:bg-indigo-400 transition-colors" />
+
+          {/* ── Collapse / Expand toggle button ────────────────────── */}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed((c) => !c)}
+            aria-label={isCollapsed ? "Expand tools panel" : "Collapse tools panel"}
+            title={isCollapsed ? "Expand tools panel" : "Collapse tools panel"}
+            className="absolute top-1/2 -translate-y-1/2 -right-3.5 w-7 h-7 rounded-full bg-white border border-gray-300 shadow-sm flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:border-indigo-400 hover:shadow-md transition-all z-20 text-xs"
+          >
+            {isCollapsed ? "›" : "‹"}
+          </button>
         </div>
 
-        {/* ── Preview canvas (full width, fills rest) ──────────────── */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <ProfilePreviewPanel profile={profile} draftOverrides={draft} />
+        {/* ── Editor tools panel (right side, resizable, collapsible) ─ */}
+        <div
+          className={`flex-shrink-0 bg-white border-l border-gray-200 transition-all duration-300 ${isCollapsed ? "overflow-hidden" : "overflow-y-auto"}`}
+          style={{ width: isCollapsed ? 0 : panelWidth }}
+        >
+          {!isCollapsed && (
+            <div className="p-3" style={{ minWidth: MIN_PANEL_WIDTH }}>
+              <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
+            </div>
+          )}
         </div>
       </div>
 
