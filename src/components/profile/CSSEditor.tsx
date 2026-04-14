@@ -7,9 +7,10 @@ interface Props {
   defaultValue: string;
   userId: string;
   onSave: (css: string) => void;
+  onChange?: (css: string) => void;
 }
 
-export default function CSSEditor({ defaultValue, userId, onSave }: Props) {
+export default function CSSEditor({ defaultValue, userId, onSave, onChange }: Props) {
   const [value, setValue] = useState(defaultValue);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -18,6 +19,11 @@ export default function CSSEditor({ defaultValue, userId, onSave }: Props) {
 
   // Always sanitize and scope CSS before injecting into preview
   const previewCss = showPreview ? sanitizeScopedCSS(value, userId) : "";
+
+  function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setValue(e.target.value);
+    onChange?.(e.target.value);
+  }
 
   return (
     <div className="space-y-3">
@@ -35,7 +41,7 @@ export default function CSSEditor({ defaultValue, userId, onSave }: Props) {
       </div>
       <textarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={handleChange}
         rows={14}
         className="w-full font-mono text-xs border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none bg-gray-950 text-green-400"
         placeholder=".profile-header { color: hotpink; }"
