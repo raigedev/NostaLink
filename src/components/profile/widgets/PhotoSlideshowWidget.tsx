@@ -10,6 +10,11 @@ const SAMPLE_PHOTOS = [
 
 const TRANSITION_DURATION = 350; // ms
 
+// Blurred ambient backdrop visual constants
+const BACKDROP_BLUR = "16px";
+const BACKDROP_BRIGHTNESS = 0.55;
+const BACKDROP_SCALE = 1.15;
+
 interface Props {
   photos?: string[];
   transition?: "fade" | "slide" | "none";
@@ -73,14 +78,27 @@ export default function PhotoSlideshowWidget({
         };
 
   return (
-    <div className="rounded-xl border overflow-hidden bg-gray-100" style={{ borderColor: "var(--border-color)" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={displayPhotos[safeIndex]}
-        alt={`Slide ${safeIndex + 1}`}
-        className="w-full h-40 object-contain"
-        style={imgStyle}
-      />
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border-color)" }}>
+      {/* Slideshow stage */}
+      <div className="relative w-full h-48 overflow-hidden bg-black">
+        {/* Blurred ambient backdrop — stays opaque so the stage never goes transparent during transitions */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={displayPhotos[safeIndex]}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ filter: `blur(${BACKDROP_BLUR}) brightness(${BACKDROP_BRIGHTNESS})`, transform: `scale(${BACKDROP_SCALE})` }}
+        />
+        {/* Main image — full visibility with smooth transitions */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={displayPhotos[safeIndex]}
+          alt={`Slide ${safeIndex + 1}`}
+          className="absolute inset-0 w-full h-full object-contain"
+          style={{ ...imgStyle, filter: "drop-shadow(0 2px 16px rgba(0,0,0,0.4))" }}
+        />
+      </div>
       <div className="flex justify-center gap-1.5 p-2" style={{ backgroundColor: "var(--card-bg)" }}>
         {displayPhotos.map((_, i) => (
           <button
