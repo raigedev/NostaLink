@@ -19,6 +19,11 @@ import { uploadAvatar, uploadCoverPhoto, uploadSlideshowPhoto } from "@/app/acti
 import { LAYOUT_IDS } from "@/types/layout";
 import type { WidgetConfig } from "@/types/widget";
 
+const ZODIAC_SIGNS = [
+  "aries","taurus","gemini","cancer","leo","virgo",
+  "libra","scorpio","sagittarius","capricorn","aquarius","pisces",
+] as const;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -913,10 +918,7 @@ function InlineWidgetSettings({
           label="Zodiac Sign"
           value={(s.sign as string) ?? "aries"}
           onChange={(v) => onChange(widget.id, "sign", v)}
-          options={[
-            "aries","taurus","gemini","cancer","leo","virgo",
-            "libra","scorpio","sagittarius","capricorn","aquarius","pisces",
-          ].map((sign) => ({
+          options={ZODIAC_SIGNS.map((sign) => ({
             value: sign,
             label: sign.charAt(0).toUpperCase() + sign.slice(1),
           }))}
