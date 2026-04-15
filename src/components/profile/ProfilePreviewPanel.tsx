@@ -13,6 +13,7 @@ import GuestbookWidget from "./widgets/GuestbookWidget";
 import ShoutboxWidget from "./widgets/ShoutboxWidget";
 import Top8FriendsWidget from "./widgets/Top8FriendsWidget";
 import FreeformCanvas from "./FreeformCanvas";
+import InlineSectionEditor from "./InlineSectionEditor";
 import type { LayoutData } from "@/types/layout";
 import { LAYOUT_IDS } from "@/types/layout";
 import { getDefaultLayout, mergeWithDefaults } from "@/lib/defaultLayout";
@@ -41,6 +42,15 @@ interface Props {
   onLayoutChange?: (layout: LayoutData) => void;
   /** Called when a drag/resize gesture ends (for persistence) */
   onLayoutCommit?: (layout: LayoutData) => void;
+  /**
+   * Called when the user clicks "Apply Changes" inside an inline section editor.
+   * Receives the section ID and the set of field updates to persist.
+   * Should return `null` on success or `{ error: string }` on failure.
+   */
+  onInlineSave?: (
+    sectionId: string,
+    updates: Partial<Profile>,
+  ) => Promise<{ error?: string } | null>;
 }
 
 /**
@@ -61,6 +71,7 @@ export default function ProfilePreviewPanel({
   onSelect,
   onLayoutChange,
   onLayoutCommit,
+  onInlineSave,
 }: Props) {
   // Merge saved profile with draft overrides
   const p: Profile = { ...profile, ...draftOverrides };
@@ -131,12 +142,54 @@ export default function ProfilePreviewPanel({
     [isEditMode, onSelect],
   );
 
+  // ── Build a stable onApply callback for a given sectionId ────────────────
+  const makeInlineApply = useCallback(
+    (sectionId: string) =>
+      (updates: Partial<Profile>) =>
+        onInlineSave ? onInlineSave(sectionId, updates) : Promise.resolve(null),
+    [onInlineSave],
+  );
+
+  // ── Cancel (deselect) ─────────────────────────────────────────────────────
+  const handleInlineCancel = useCallback(() => {
+    if (onSelect) onSelect("");
+  }, [onSelect]);
+
+  /** Wraps a section node with InlineSectionEditor when in edit mode */
+  const wrapSection = useCallback(
+    (sectionId: string, node: React.ReactNode) => {
+      if (!isEditMode) return node;
+      return (
+        <InlineSectionEditor
+          sectionId={sectionId}
+          profile={p}
+          isSelected={selectedId === sectionId}
+          isEditMode={isEditMode}
+          onApply={makeInlineApply(sectionId)}
+          onCancel={handleInlineCancel}
+        >
+          {node}
+        </InlineSectionEditor>
+      );
+    },
+    // p is reconstructed each render; use specific stable deps instead
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      isEditMode, selectedId, makeInlineApply, handleInlineCancel,
+      p.avatar_url, p.display_name, p.username, p.headline,
+      p.location, p.mood, p.relationship_status, p.website,
+      p.bio, p.custom_html, p.profile_song_url, p.widgets,
+      p.cover_url,
+    ],
+  );
+
   // ── Build named sections for FreeformCanvas ──────────────────────────────
   const sections = useMemo(() => {
     // Avatar + identity
     const avatarSection = {
       id: LAYOUT_IDS.AVATAR_BOX,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
           <div className="fp-avatar-img">
             {p.avatar_url ? (
@@ -155,14 +208,15 @@ export default function ProfilePreviewPanel({
           {p.headline && (
             <div className="fp-headline">{p.headline}</div>
           )}
-        </div>
+        </div>,
       ),
     };
 
     // Details
     const detailsSection = (p.location || p.mood || p.relationship_status || p.website) ? {
       id: LAYOUT_IDS.DETAILS,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.DETAILS,
         <div className="fp-section">
           <div className="fp-section-header teal">Details</div>
           <div className="fp-section-body">
@@ -187,14 +241,15 @@ export default function ProfilePreviewPanel({
               </div>
             )}
           </div>
-        </div>
+        </div>,
       ),
     } : null;
 
     // Connect
     const connectSection = {
       id: LAYOUT_IDS.CONNECT,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.CONNECT,
         <div className="fp-section">
           <div className="fp-section-header green">Connect</div>
           <div className="fp-section-body">
@@ -202,77 +257,93 @@ export default function ProfilePreviewPanel({
               ✏️ Edit My Profile
             </span>
           </div>
-        </div>
+        </div>,
       ),
     };
 
     // Hit counter
     const hitCounterSection = {
       id: LAYOUT_IDS.HIT_COUNTER,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.HIT_COUNTER,
         <div className="fp-hitcounter">
           <HitCounterWidget count={p.hit_count || 0} memberSince={p.created_at} />
-        </div>
+        </div>,
       ),
     };
 
     // Music player
     const musicSection = p.profile_song_url ? {
       id: LAYOUT_IDS.MUSIC_PLAYER,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.MUSIC_PLAYER,
         <MusicPlayer
           src={p.profile_song_url}
           title={p.display_name ?? p.username}
-        />
+        />,
       ),
     } : null;
 
     // About Me
     const aboutSection = p.bio ? {
       id: LAYOUT_IDS.ABOUT_ME,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.ABOUT_ME,
         <div className="fp-section">
           <div className="fp-section-header blue">About Me</div>
           <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>
             {p.bio}
           </div>
-        </div>
+        </div>,
       ),
     } : null;
 
     // Custom HTML
     const customHtmlSection = p.custom_html ? {
       id: LAYOUT_IDS.CUSTOM_HTML,
-      node: (
+      node: wrapSection(
+        LAYOUT_IDS.CUSTOM_HTML,
         <div
           className={`profile-custom-html fp-section ${scopedCssClass}`}
           dangerouslySetInnerHTML={{ __html: p.custom_html }}
-        />
+        />,
       ),
     } : null;
 
     // Widgets
     const widgetsSection = {
       id: LAYOUT_IDS.WIDGETS,
-      node: <ProfileSections profile={p} topFriends={top8Friends} />,
+      node: wrapSection(
+        LAYOUT_IDS.WIDGETS,
+        <ProfileSections profile={p} topFriends={top8Friends} />,
+      ),
     };
 
     // Top 8 Friends
     const topFriendsSection = top8Friends.length > 0 ? {
       id: LAYOUT_IDS.TOP_FRIENDS,
-      node: <Top8FriendsWidget friends={top8Friends} />,
+      node: wrapSection(
+        LAYOUT_IDS.TOP_FRIENDS,
+        <Top8FriendsWidget friends={top8Friends} />,
+      ),
     } : null;
 
     // Guestbook
     const guestbookSection = {
       id: LAYOUT_IDS.GUESTBOOK,
-      node: <GuestbookWidget profileId={p.id} />,
+      node: wrapSection(
+        LAYOUT_IDS.GUESTBOOK,
+        <GuestbookWidget profileId={p.id} />,
+      ),
     };
 
     // Shoutbox
     const shoutboxSection = {
       id: LAYOUT_IDS.SHOUTBOX,
-      node: <ShoutboxWidget profileId={p.id} />,
+      node: wrapSection(
+        LAYOUT_IDS.SHOUTBOX,
+        <ShoutboxWidget profileId={p.id} />,
+      ),
     };
 
     return [
@@ -288,9 +359,10 @@ export default function ProfilePreviewPanel({
       guestbookSection,
       shoutboxSection,
     ].filter(Boolean) as { id: string; node: React.ReactNode }[];
-    // Listed specific profile fields rather than `p` because `p` is
-    // reconstructed on every render (const p = {...profile, ...draftOverrides}).
-    // Using specific primitive fields avoids unnecessary re-runs.
+    // `wrapSection` is memoized on the specific profile fields it needs, so
+    // adding it here as a dep correctly causes sections to rebuild when the
+    // selected section changes (for inline edit activation) or profile data
+    // changes (for display).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     p.avatar_url, p.display_name, p.username, p.headline,
@@ -298,6 +370,7 @@ export default function ProfilePreviewPanel({
     p.hit_count, p.created_at, p.profile_song_url,
     p.bio, p.custom_html, p.id,
     top8Friends, scopedCssClass,
+    wrapSection,
   ]);
 
   return (
@@ -332,7 +405,7 @@ export default function ProfilePreviewPanel({
               fontWeight: "normal",
             }}
           >
-            🖱 Drag to move · Tap to edit
+            🖱 Drag · Tap to edit inline
           </span>
         )}
         <span
