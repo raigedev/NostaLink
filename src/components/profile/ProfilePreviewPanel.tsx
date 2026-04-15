@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Profile } from "@/app/actions/profile";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
@@ -41,7 +41,13 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
 
   // Fetch full friend objects for Top 8 display — IDs come from draft/profile
   const [top8Friends, setTop8Friends] = useState<Friend[]>([]);
-  const topFriendIdsKey = JSON.stringify(p.top_friends ?? []);
+  // Memoize the stringified key so it only recomputes when top_friends changes
+  const topFriendIdsKey = useMemo(
+    () => JSON.stringify(p.top_friends ?? []),
+    // p is recomputed each render; use the underlying sources for stable deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile.top_friends, draftOverrides.top_friends],
+  );
   useEffect(() => {
     const ids = p.top_friends;
     if (!ids || ids.length === 0) {
@@ -53,13 +59,16 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
       .from("profiles")
       .select("id, username, display_name, avatar_url")
       .in("id", ids)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("ProfilePreviewPanel: failed to fetch top friends", error);
+          return;
+        }
         if (data) {
           const map = new Map(data.map((f: Friend) => [f.id, f]));
           setTop8Friends(ids.map((id) => map.get(id)).filter(Boolean) as Friend[]);
         }
       });
-  // topFriendIdsKey is a stable stringified representation of the ids array
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topFriendIdsKey]);
 
