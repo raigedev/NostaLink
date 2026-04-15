@@ -124,6 +124,10 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  // ── Optimistic local selection state for instant UI feedback ─────────────
+  const [selectedThemeId, setSelectedThemeId] = useState(profile.theme_id ?? "minimalist");
+  const [selectedFontId, setSelectedFontId] = useState(profile.font_id ?? "inter");
+
   // ── Draft state for live preview ──────────────────────────────────────────
   // Using a ref (not state) since the draft doesn't need to re-render this
   // component — the parent's ProfilePreviewPanel handles that.
@@ -182,6 +186,50 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
     const result = await updateProfileCustomization(data);
     setSaving(false);
     showMessage(result?.error ?? "Saved!");
+  }
+
+  /**
+   * Immediately updates theme selection state and live preview, then
+   * persists the change asynchronously. If the save fails, the selection
+   * is reverted and an error message is shown.
+   */
+  async function handleThemeSelect(id: string) {
+    const previous = selectedThemeId;
+    // 1. Update UI immediately (optimistic)
+    setSelectedThemeId(id);
+    updateDraft({ theme_id: id });
+    // 2. Persist in background
+    const result = await updateProfileCustomization({ theme_id: id });
+    if (result?.error) {
+      // Revert on failure
+      setSelectedThemeId(previous);
+      updateDraft({ theme_id: previous });
+      showMessage(result.error);
+    } else {
+      showMessage("Saved!");
+    }
+  }
+
+  /**
+   * Immediately updates font selection state and live preview, then
+   * persists the change asynchronously. If the save fails, the selection
+   * is reverted and an error message is shown.
+   */
+  async function handleFontSelect(id: string) {
+    const previous = selectedFontId;
+    // 1. Update UI immediately (optimistic)
+    setSelectedFontId(id);
+    updateDraft({ font_id: id });
+    // 2. Persist in background
+    const result = await updateProfileCustomization({ font_id: id });
+    if (result?.error) {
+      // Revert on failure
+      setSelectedFontId(previous);
+      updateDraft({ font_id: previous });
+      showMessage(result.error);
+    } else {
+      showMessage("Saved!");
+    }
   }
 
   async function handleCssSave(css: string) {
@@ -418,21 +466,15 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-2">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Theme</h3>
               <ThemeSelector
-                current={profile.theme_id ?? "minimalist"}
-                onSelect={(id) => {
-                  updateDraft({ theme_id: id });
-                  handleCustomSave({ theme_id: id });
-                }}
+                current={selectedThemeId}
+                onSelect={handleThemeSelect}
               />
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-2">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Font</h3>
               <FontSelector
-                current={profile.font_id ?? "inter"}
-                onSelect={(id) => {
-                  updateDraft({ font_id: id });
-                  handleCustomSave({ font_id: id });
-                }}
+                current={selectedFontId}
+                onSelect={handleFontSelect}
               />
             </div>
             <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 space-y-2">
