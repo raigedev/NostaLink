@@ -271,6 +271,8 @@ function WidgetSettings({
         <SlideshowSettings
           widgetId={widget.id}
           photos={(s.photos as string[]) ?? []}
+          transition={(s.transition as "fade" | "slide" | "none") ?? "fade"}
+          interval={(s.interval as "slow" | "normal" | "fast") ?? "normal"}
           onChange={onChange}
         />
       );
@@ -287,10 +289,14 @@ function WidgetSettings({
 function SlideshowSettings({
   widgetId,
   photos,
+  transition,
+  interval,
   onChange,
 }: {
   widgetId: string;
   photos: string[];
+  transition: "fade" | "slide" | "none";
+  interval: "slow" | "normal" | "fast";
   onChange: (id: string, key: string, value: unknown) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -302,16 +308,21 @@ function SlideshowSettings({
     if (!file) return;
     setUploading(true);
     setError(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    const result = await uploadSlideshowPhoto(formData);
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      onChange(widgetId, "photos", [...photos, result.url]);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadSlideshowPhoto(formData);
+      if ("error" in result) {
+        setError(result.error);
+      } else {
+        onChange(widgetId, "photos", [...photos, result.url]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
-    setUploading(false);
-    if (inputRef.current) inputRef.current.value = "";
   }
 
   function removePhoto(index: number) {
@@ -354,6 +365,34 @@ function SlideshowSettings({
           disabled={uploading}
         />
       </label>
+
+      <div className="border-t border-gray-100 pt-3 space-y-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Transition Style</label>
+          <select
+            value={transition}
+            onChange={(e) => onChange(widgetId, "transition", e.target.value)}
+            className="w-full px-2 py-1.5 border rounded text-sm mt-1"
+          >
+            <option value="fade">Fade</option>
+            <option value="slide">Slide</option>
+            <option value="none">None (Instant)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Playback Speed</label>
+          <select
+            value={interval}
+            onChange={(e) => onChange(widgetId, "interval", e.target.value)}
+            className="w-full px-2 py-1.5 border rounded text-sm mt-1"
+          >
+            <option value="slow">Slow (5s)</option>
+            <option value="normal">Normal (3s)</option>
+            <option value="fast">Fast (1.5s)</option>
+          </select>
+        </div>
+      </div>
     </div>
   );
 }

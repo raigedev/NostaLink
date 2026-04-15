@@ -62,7 +62,13 @@ export default function WidgetRenderer({
       return <MusicPlaylistWidget />;
 
     case "photo_slideshow":
-      return <PhotoSlideshowWidget photos={s.photos as string[] | undefined} />;
+      return (
+        <PhotoSlideshowWidget
+          photos={s.photos as string[] | undefined}
+          transition={(s.transition as "fade" | "slide" | "none") ?? "fade"}
+          interval={(s.interval as "slow" | "normal" | "fast") ?? "normal"}
+        />
+      );
 
     case "guestbook":
       return <GuestbookWidget profileId={profileId} />;
