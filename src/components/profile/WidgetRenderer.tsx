@@ -67,6 +67,7 @@ export default function WidgetRenderer({
           photos={s.photos as string[] | undefined}
           transition={(s.transition as "fade" | "slide" | "none") ?? "fade"}
           interval={(s.interval as "slow" | "normal" | "fast") ?? "normal"}
+          displayMode={(s.displayMode as "fill" | "fit") ?? "fill"}
         />
       );
 
