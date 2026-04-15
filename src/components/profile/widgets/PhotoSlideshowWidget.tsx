@@ -73,12 +73,12 @@ export default function PhotoSlideshowWidget({
         };
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border-color)" }}>
+    <div className="rounded-xl border overflow-hidden bg-gray-100" style={{ borderColor: "var(--border-color)" }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={displayPhotos[safeIndex]}
         alt={`Slide ${safeIndex + 1}`}
-        className="w-full h-40 object-cover"
+        className="w-full h-40 object-contain"
         style={imgStyle}
       />
       <div className="flex justify-center gap-1.5 p-2" style={{ backgroundColor: "var(--card-bg)" }}>

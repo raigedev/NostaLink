@@ -250,17 +250,16 @@ export default function EditProfileLayout({ profile }: Props) {
         : { height: isCollapsed ? 0 : panelHeight }
       }
     >
-      {!isCollapsed && (
-        <div
-          className="p-2"
-          style={isHorizontal
-            ? { minWidth:  MIN_PANEL_WIDTH  }
-            : { minHeight: MIN_PANEL_HEIGHT }
-          }
-        >
-          <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
-        </div>
-      )}
+      <div
+        className="p-2"
+        aria-hidden={isCollapsed || undefined}
+        style={isHorizontal
+          ? { minWidth:  MIN_PANEL_WIDTH  }
+          : { minHeight: MIN_PANEL_HEIGHT }
+        }
+      >
+        <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
+      </div>
     </div>
   );
 
