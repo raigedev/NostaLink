@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { Profile } from "@/app/actions/profile";
 import {
@@ -29,6 +29,16 @@ interface Props {
   profile: Profile;
   /** Called whenever the in-editor draft changes so a parent can show a live preview */
   onDraftChange?: (draft: Partial<Profile>) => void;
+  /**
+   * When set, the editor will switch to this tab on the next render.
+   * The parent should reset it to null after use to avoid re-triggering.
+   */
+  requestedTab?: string | null;
+  /**
+   * When set (together with requestedTab="Widgets"), the editor will
+   * expand the specific widget's settings panel.
+   */
+  requestedWidgetId?: string | null;
 }
 
 const tabs = [
@@ -118,11 +128,18 @@ function FileUploadButton({
 
 export type WidgetConfig = import("@/types/widget").WidgetConfig;
 
-export default function ProfileEditor({ profile, onDraftChange }: Props) {
+export default function ProfileEditor({ profile, onDraftChange, requestedTab, requestedWidgetId }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Basic Info");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  // ── External tab-focus request (from clicking elements in live preview) ──
+  useEffect(() => {
+    if (requestedTab) {
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab]);
 
   // ── Optimistic local selection state for instant UI feedback ─────────────
   const [selectedThemeId, setSelectedThemeId] = useState(profile.theme_id ?? "minimalist");
@@ -542,6 +559,7 @@ export default function ProfileEditor({ profile, onDraftChange }: Props) {
             initialWidgets={(profile.widgets ?? []) as unknown as WidgetConfig[]}
             profileId={profile.id}
             onSave={handleWidgetsSave}
+            focusWidgetId={requestedWidgetId ?? null}
           />
         )}
 

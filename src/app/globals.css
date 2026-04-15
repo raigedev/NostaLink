@@ -663,3 +663,28 @@ body {
   .fp-left { width: 100%; }
   .fp-right { width: 100%; }
 }
+
+/* ── Freeform layout canvas ──────────────────────────────────── */
+
+/* Edit-mode hint on mobile: show "long press to drag" tooltip */
+.freeform-canvas-hint {
+  display: block;
+  font-size: 10px;
+  text-align: center;
+  color: rgba(180, 180, 220, 0.7);
+  padding: 4px 0 6px;
+  letter-spacing: 0.3px;
+}
+
+/* Draggable item: cursor indicator when hovered in edit mode */
+[data-layout-id] {
+  cursor: pointer;
+}
+
+/* On mobile devices, provide a visual affordance that items are interactive */
+@media (hover: none) {
+  [data-layout-id]:active {
+    outline: 2px solid rgba(99, 102, 241, 0.6);
+    outline-offset: 2px;
+  }
+}

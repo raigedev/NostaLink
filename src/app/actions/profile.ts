@@ -37,6 +37,8 @@ export interface Profile {
   hit_count: number;
   widgets: Record<string, unknown>[] | null;
   top_friends: string[] | null;
+  /** Freeform layout metadata for the profile canvas editor */
+  layout_data: Record<string, unknown> | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -496,5 +498,42 @@ export async function updateCustomHtml(html: string) {
   return { success: true };
 }
 
+// ── Layout Data Action ─────────────────────────────────────────────────────────
 
+const layoutDataSchema = z.object({
+  version: z.literal(1),
+  items: z.array(
+    z.object({
+      id: z.string().max(100),
+      x: z.number().min(0).max(100),
+      y: z.number().min(0).max(10000),
+      w: z.number().min(5).max(100),
+    }),
+  ).max(50),
+}).nullable();
+
+export async function updateLayoutData(layoutData: Record<string, unknown> | null) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const parsed = layoutDataSchema.safeParse(layoutData);
+  if (!parsed.success) return { error: "Invalid layout data" };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ layout_data: parsed.data, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .single();
+  if (profile?.username) revalidatePath(`/profile/${profile.username}`);
+
+  return { success: true };
+}
 
