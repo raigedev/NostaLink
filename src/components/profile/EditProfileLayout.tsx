@@ -3,7 +3,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Profile } from "@/app/actions/profile";
-import { updateLayoutData } from "@/app/actions/profile";
+import {
+  updateLayoutData,
+  updateProfile,
+  updateProfileCustomization,
+  updateWidgets,
+  updateCustomHtml,
+} from "@/app/actions/profile";
 import ProfileEditor from "./ProfileEditor";
 import ProfilePreviewPanel from "./ProfilePreviewPanel";
 import type { LayoutData } from "@/types/layout";
@@ -109,6 +115,11 @@ export default function EditProfileLayout({ profile }: Props) {
   const [layoutSaveMsg, setLayoutSaveMsg] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Keep a ref to the latest draft so inline-save callbacks always read the
+  // current value without needing to be recreated on every draft change.
+  const currentDraftRef = useRef<Partial<Profile>>({});
+  currentDraftRef.current = draft;
+
   const dragging = useRef(false);
   const dragStartX = useRef(0);
   const dragStartY = useRef(0);
@@ -142,6 +153,67 @@ export default function EditProfileLayout({ profile }: Props) {
   const handleDraftChange = useCallback((newDraft: Partial<Profile>) => {
     setDraft(newDraft);
   }, []);
+
+  /**
+   * Called when the user clicks "Apply Changes" in an inline section editor
+   * inside the live preview. Routes to the correct server action based on
+   * which fields are being updated, then merges the changes into the local
+   * draft so the preview reflects them immediately.
+   */
+  const handleInlineSave = useCallback(
+    async (
+      _sectionId: string,
+      updates: Partial<Profile>,
+    ): Promise<{ error?: string } | null> => {
+      // Merge the latest saved profile + current left-panel draft + inline
+      // updates to build a complete set of field values for save calls that
+      // require all fields (e.g. updateProfile).
+      const merged = { ...profile, ...currentDraftRef.current, ...updates };
+
+      const basicFields: (keyof Profile)[] = [
+        "display_name", "bio", "headline", "location",
+        "website", "mood", "relationship_status", "username",
+      ];
+      const hasBasicFields = basicFields.some((k) => k in updates);
+
+      let result: { error?: string } | null = null;
+
+      if (hasBasicFields) {
+        // Build a FormData consistent with what the Basic Info form sends
+        const fd = new FormData();
+        fd.set("username", merged.username ?? "");
+        fd.set("display_name", merged.display_name ?? "");
+        fd.set("bio", merged.bio ?? "");
+        fd.set("headline", merged.headline ?? "");
+        fd.set("mood", merged.mood ?? "");
+        fd.set("location", merged.location ?? "");
+        fd.set("website", merged.website ?? "");
+        fd.set("relationship_status", merged.relationship_status ?? "");
+        result = await updateProfile(fd) ?? null;
+      } else if ("profile_song_url" in updates) {
+        result = await updateProfileCustomization({
+          profile_song_url: updates.profile_song_url ?? undefined,
+        }) ?? null;
+      } else if ("custom_html" in updates) {
+        result = await updateCustomHtml(updates.custom_html ?? "") ?? null;
+      } else if ("widgets" in updates) {
+        result = await updateWidgets(
+          (updates.widgets ?? []) as Record<string, unknown>[],
+        ) ?? null;
+      }
+      // avatar_url and cover_url are already persisted by the upload actions;
+      // we only need to update the local draft here so the preview refreshes.
+
+      if (!result?.error) {
+        setDraft((prev) => ({ ...prev, ...updates }));
+      }
+
+      return result;
+    },
+    // profile is the server-side base; it only changes on hard navigation.
+    // currentDraftRef is a ref so it doesn't need to be a dep.
+    [profile],
+  );
 
   const hasUnsavedChanges = Object.keys(draft).length > 0;
 
@@ -353,6 +425,7 @@ export default function EditProfileLayout({ profile }: Props) {
         onSelect={handleElementSelect}
         onLayoutChange={handleLayoutChange}
         onLayoutCommit={handleLayoutCommit}
+        onInlineSave={handleInlineSave}
       />
     </div>
   );
@@ -614,6 +687,7 @@ export default function EditProfileLayout({ profile }: Props) {
               onSelect={handleElementSelect}
               onLayoutChange={handleLayoutChange}
               onLayoutCommit={handleLayoutCommit}
+              onInlineSave={handleInlineSave}
             />
           </div>
         )}
