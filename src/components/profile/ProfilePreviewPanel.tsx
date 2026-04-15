@@ -288,7 +288,10 @@ export default function ProfilePreviewPanel({
       guestbookSection,
       shoutboxSection,
     ].filter(Boolean) as { id: string; node: React.ReactNode }[];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Listed specific profile fields rather than `p` because `p` is
+    // reconstructed on every render (const p = {...profile, ...draftOverrides}).
+    // Using specific primitive fields avoids unnecessary re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     p.avatar_url, p.display_name, p.username, p.headline,
     p.location, p.mood, p.relationship_status, p.website,

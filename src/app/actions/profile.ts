@@ -512,7 +512,7 @@ const layoutDataSchema = z.object({
   ).max(50),
 }).nullable();
 
-export async function updateLayoutData(layoutData: Record<string, unknown> | null) {
+export async function updateLayoutData(layoutData: { version: 1; items: Array<{ id: string; x: number; y: number; w: number }> } | null) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };

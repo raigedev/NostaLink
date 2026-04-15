@@ -9,6 +9,7 @@ import ProfilePreviewPanel from "./ProfilePreviewPanel";
 import type { LayoutData } from "@/types/layout";
 import { LAYOUT_IDS } from "@/types/layout";
 import { getDefaultLayout } from "@/lib/defaultLayout";
+import { parseLayoutData } from "@/lib/parseLayoutData";
 
 interface Props {
   profile: Profile;
@@ -95,7 +96,7 @@ export default function EditProfileLayout({ profile }: Props) {
 
   // ── Freeform layout state ──────────────────────────────────────────────────
   const [layoutData, setLayoutData] = useState<LayoutData | null>(
-    profile.layout_data ? (profile.layout_data as unknown as LayoutData) : null,
+    parseLayoutData(profile.layout_data),
   );
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   // requestedTab / requestedWidgetId: used to tell ProfileEditor to switch tabs
@@ -284,7 +285,7 @@ export default function EditProfileLayout({ profile }: Props) {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       setIsSavingLayout(true);
-      const result = await updateLayoutData(newLayout as unknown as Record<string, unknown>);
+      const result = await updateLayoutData(newLayout);
       setIsSavingLayout(false);
       if (result?.error) {
         setLayoutSaveMsg("⚠ Layout save failed");

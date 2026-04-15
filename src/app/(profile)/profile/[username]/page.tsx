@@ -15,9 +15,9 @@ import Link from "next/link";
 import AddFriendButton from "@/components/profile/AddFriendButton";
 import SendMessageButton from "@/components/profile/SendMessageButton";
 import PublicProfileFreeformLayout from "@/components/profile/PublicProfileFreeformLayout";
-import type { LayoutData } from "@/types/layout";
 import { LAYOUT_IDS } from "@/types/layout";
 import { mergeWithDefaults } from "@/lib/defaultLayout";
+import { parseLayoutData } from "@/lib/parseLayoutData";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -116,9 +116,8 @@ export default async function ProfilePage({ params }: Props) {
   }
 
   // ── Build section nodes for freeform layout (if applicable) ──────────────
-  const freeformLayout = profile.layout_data
-    ? mergeWithDefaults(profile.layout_data as unknown as LayoutData)
-    : null;
+  const parsedLayout = parseLayoutData(profile.layout_data);
+  const freeformLayout = parsedLayout ? mergeWithDefaults(parsedLayout) : null;
 
   const avatarNode = (
     <div className="fp-avatar-box">
