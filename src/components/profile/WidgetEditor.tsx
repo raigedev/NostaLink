@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import WidgetLibrary, { type WidgetDef } from "./WidgetLibrary";
 import type { WidgetConfig } from "@/types/widget";
+import { uploadSlideshowPhoto } from "@/app/actions/profile";
 
 export type { WidgetConfig };
 
@@ -265,9 +266,94 @@ function WidgetSettings({
         </div>
       );
 
+    case "photo_slideshow":
+      return (
+        <SlideshowSettings
+          widgetId={widget.id}
+          photos={(s.photos as string[]) ?? []}
+          onChange={onChange}
+        />
+      );
+
     default:
       return (
         <p className="text-xs text-gray-400">No settings available for this widget.</p>
       );
   }
+}
+
+// ── Slideshow photo manager ───────────────────────────────────────────────────
+
+function SlideshowSettings({
+  widgetId,
+  photos,
+  onChange,
+}: {
+  widgetId: string;
+  photos: string[];
+  onChange: (id: string, key: string, value: unknown) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const formData = new FormData();
+    formData.append("file", file);
+    const result = await uploadSlideshowPhoto(formData);
+    if ("error" in result) {
+      setError(result.error);
+    } else {
+      onChange(widgetId, "photos", [...photos, result.url]);
+    }
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function removePhoto(index: number) {
+    onChange(widgetId, "photos", photos.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="space-y-3">
+      {photos.length > 0 ? (
+        <div className="space-y-2">
+          {photos.map((url, i) => (
+            <div key={i} className="flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Slide ${i + 1}`} className="w-12 h-9 object-cover rounded border border-gray-200" />
+              <span className="text-xs text-gray-500 flex-1 truncate">Photo {i + 1}</span>
+              <button
+                type="button"
+                onClick={() => removePhoto(i)}
+                className="text-xs text-red-400 hover:text-red-600 transition"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-gray-400">No photos added yet.</p>
+      )}
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <label className={`inline-flex items-center gap-1 text-xs font-medium transition ${uploading ? "text-gray-400 cursor-not-allowed" : "text-indigo-600 hover:text-indigo-800 cursor-pointer"}`}>
+        {uploading ? "Uploading…" : "+ Add Photo"}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleFileChange}
+          disabled={uploading}
+        />
+      </label>
+    </div>
+  );
 }
