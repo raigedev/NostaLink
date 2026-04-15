@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Profile } from "@/app/actions/profile";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
@@ -12,6 +12,10 @@ import HitCounterWidget from "./widgets/HitCounterWidget";
 import GuestbookWidget from "./widgets/GuestbookWidget";
 import ShoutboxWidget from "./widgets/ShoutboxWidget";
 import Top8FriendsWidget from "./widgets/Top8FriendsWidget";
+import FreeformCanvas from "./FreeformCanvas";
+import type { LayoutData } from "@/types/layout";
+import { LAYOUT_IDS } from "@/types/layout";
+import { getDefaultLayout, mergeWithDefaults } from "@/lib/defaultLayout";
 
 interface Friend {
   id: string;
@@ -25,17 +29,39 @@ interface Props {
   profile: Profile;
   /** Unsaved draft overrides from the editor — merged on top of profile */
   draftOverrides: Partial<Profile>;
+  /** When true, renders draggable/selectable overlay in the preview */
+  isEditMode?: boolean;
+  /** Current freeform layout data (only used when isEditMode=true) */
+  layoutData?: LayoutData | null;
+  /** Currently selected element ID (edit mode only) */
+  selectedId?: string | null;
+  /** Called when user clicks/taps a profile section in preview */
+  onSelect?: (id: string) => void;
+  /** Called on every drag/resize update (live) */
+  onLayoutChange?: (layout: LayoutData) => void;
+  /** Called when a drag/resize gesture ends (for persistence) */
+  onLayoutCommit?: (layout: LayoutData) => void;
 }
 
 /**
- * Renders a live, read-only preview of the public profile page while
- * the user is editing.  Uses the same fp-* CSS classes as the real profile
- * page so the preview closely matches what visitors will see.
+ * Renders a live preview of the public profile page while the user is editing.
  *
- * Draft overrides are merged on top of the saved profile so unsaved changes
- * are immediately visible without being published.
+ * In non-edit mode (isEditMode=false): renders with normal CSS flow layout,
+ * matching the public profile page.
+ *
+ * In edit mode (isEditMode=true): replaces the two-column layout with a
+ * FreeformCanvas where every major section can be dragged and resized.
  */
-export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) {
+export default function ProfilePreviewPanel({
+  profile,
+  draftOverrides,
+  isEditMode = false,
+  layoutData,
+  selectedId,
+  onSelect,
+  onLayoutChange,
+  onLayoutCommit,
+}: Props) {
   // Merge saved profile with draft overrides
   const p: Profile = { ...profile, ...draftOverrides };
 
@@ -90,9 +116,193 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
   const bgModeClass = p.bg_mode ? `bg-mode-${p.bg_mode}` : "";
   const scopedCssClass = `profile-custom-${p.id}`;
 
+  // ── Effective layout: stored or generated default ────────────────────────
+  const effectiveLayout = useMemo((): LayoutData => {
+    if (!isEditMode) return getDefaultLayout();
+    if (layoutData) return mergeWithDefaults(layoutData);
+    return getDefaultLayout();
+  }, [isEditMode, layoutData]);
+
+  // ── Click handler for non-freeform mode (adds edit mode click-to-edit) ──
+  const handleSectionClick = useCallback(
+    (id: string) => {
+      if (isEditMode && onSelect) onSelect(id);
+    },
+    [isEditMode, onSelect],
+  );
+
+  // ── Build named sections for FreeformCanvas ──────────────────────────────
+  const sections = useMemo(() => {
+    // Avatar + identity
+    const avatarSection = {
+      id: LAYOUT_IDS.AVATAR_BOX,
+      node: (
+        <div className="fp-avatar-box">
+          <div className="fp-avatar-img">
+            {p.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={p.avatar_url}
+                alt="Avatar"
+                className="fp-avatar-img-inner"
+              />
+            ) : (
+              <span className="fp-avatar-placeholder">👤</span>
+            )}
+          </div>
+          <div className="fp-display-name">{p.display_name || p.username}</div>
+          <div className="fp-username">@{p.username}</div>
+          {p.headline && (
+            <div className="fp-headline">{p.headline}</div>
+          )}
+        </div>
+      ),
+    };
+
+    // Details
+    const detailsSection = (p.location || p.mood || p.relationship_status || p.website) ? {
+      id: LAYOUT_IDS.DETAILS,
+      node: (
+        <div className="fp-section">
+          <div className="fp-section-header teal">Details</div>
+          <div className="fp-section-body">
+            {p.location && (
+              <div className="fp-details-row"><span>📍</span><span>{p.location}</span></div>
+            )}
+            {p.relationship_status && (
+              <div className="fp-details-row">
+                <span>💕</span>
+                <span className="fp-relationship-status">
+                  {formatRelationshipStatus(p.relationship_status)}
+                </span>
+              </div>
+            )}
+            {p.mood && (
+              <div className="fp-details-row"><span>😌</span><span>{p.mood}</span></div>
+            )}
+            {p.website && (
+              <div className="fp-details-row">
+                <span>🔗</span>
+                <span className="fp-website-link">{p.website}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    } : null;
+
+    // Connect
+    const connectSection = {
+      id: LAYOUT_IDS.CONNECT,
+      node: (
+        <div className="fp-section">
+          <div className="fp-section-header green">Connect</div>
+          <div className="fp-section-body">
+            <span className="fp-btn" style={{ display: "block", textAlign: "center", cursor: "default" }}>
+              ✏️ Edit My Profile
+            </span>
+          </div>
+        </div>
+      ),
+    };
+
+    // Hit counter
+    const hitCounterSection = {
+      id: LAYOUT_IDS.HIT_COUNTER,
+      node: (
+        <div className="fp-hitcounter">
+          <HitCounterWidget count={p.hit_count || 0} memberSince={p.created_at} />
+        </div>
+      ),
+    };
+
+    // Music player
+    const musicSection = p.profile_song_url ? {
+      id: LAYOUT_IDS.MUSIC_PLAYER,
+      node: (
+        <MusicPlayer
+          src={p.profile_song_url}
+          title={p.display_name ?? p.username}
+        />
+      ),
+    } : null;
+
+    // About Me
+    const aboutSection = p.bio ? {
+      id: LAYOUT_IDS.ABOUT_ME,
+      node: (
+        <div className="fp-section">
+          <div className="fp-section-header blue">About Me</div>
+          <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>
+            {p.bio}
+          </div>
+        </div>
+      ),
+    } : null;
+
+    // Custom HTML
+    const customHtmlSection = p.custom_html ? {
+      id: LAYOUT_IDS.CUSTOM_HTML,
+      node: (
+        <div
+          className={`profile-custom-html fp-section ${scopedCssClass}`}
+          dangerouslySetInnerHTML={{ __html: p.custom_html }}
+        />
+      ),
+    } : null;
+
+    // Widgets
+    const widgetsSection = {
+      id: LAYOUT_IDS.WIDGETS,
+      node: <ProfileSections profile={p} topFriends={top8Friends} />,
+    };
+
+    // Top 8 Friends
+    const topFriendsSection = top8Friends.length > 0 ? {
+      id: LAYOUT_IDS.TOP_FRIENDS,
+      node: <Top8FriendsWidget friends={top8Friends} />,
+    } : null;
+
+    // Guestbook
+    const guestbookSection = {
+      id: LAYOUT_IDS.GUESTBOOK,
+      node: <GuestbookWidget profileId={p.id} />,
+    };
+
+    // Shoutbox
+    const shoutboxSection = {
+      id: LAYOUT_IDS.SHOUTBOX,
+      node: <ShoutboxWidget profileId={p.id} />,
+    };
+
+    return [
+      avatarSection,
+      detailsSection,
+      connectSection,
+      hitCounterSection,
+      musicSection,
+      aboutSection,
+      customHtmlSection,
+      widgetsSection,
+      topFriendsSection,
+      guestbookSection,
+      shoutboxSection,
+    ].filter(Boolean) as { id: string; node: React.ReactNode }[];
+    // Listed specific profile fields rather than `p` because `p` is
+    // reconstructed on every render (const p = {...profile, ...draftOverrides}).
+    // Using specific primitive fields avoids unnecessary re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    p.avatar_url, p.display_name, p.username, p.headline,
+    p.location, p.mood, p.relationship_status, p.website,
+    p.hit_count, p.created_at, p.profile_song_url,
+    p.bio, p.custom_html, p.id,
+    top8Friends, scopedCssClass,
+  ]);
+
   return (
     <div className="preview-panel-root">
-      {/* Sticky "Live Preview" label */}
+      {/* ── Sticky banner ───────────────────────────────────────────────── */}
       <div
         style={{
           position: "sticky",
@@ -112,6 +322,19 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
       >
         <span style={{ opacity: 0.85 }}>👁</span>
         <span>Live Preview</span>
+        {isEditMode && (
+          <span
+            style={{
+              background: "rgba(255,255,255,0.2)",
+              borderRadius: "4px",
+              padding: "1px 5px",
+              fontSize: "9px",
+              fontWeight: "normal",
+            }}
+          >
+            🖱 Drag to move · Tap to edit
+          </span>
+        )}
         <span
           style={{
             marginLeft: "auto",
@@ -124,7 +347,7 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
         </span>
       </div>
 
-      {/* Profile page replica */}
+      {/* ── Profile page replica ──────────────────────────────────────── */}
       <div
         className={`${theme?.cssClass ?? ""} ${bgModeClass} ${scopedCssClass}`}
         style={{
@@ -135,12 +358,9 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
           minHeight: "400px",
         }}
       >
-        {/* Load Google Font for the selected font */}
         {fontUrl && (
           <style dangerouslySetInnerHTML={{ __html: `@import url('${fontUrl}');` }} />
         )}
-
-        {/* Custom CSS from draft */}
         {p.custom_css && (
           <style dangerouslySetInnerHTML={{ __html: p.custom_css }} />
         )}
@@ -162,134 +382,42 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
             <h1>{(p.display_name || p.username) + "'s Profile"}</h1>
           </div>
 
-          {/* Two-column layout */}
-          <div className="fp-layout">
-            {/* ── LEFT RAIL ── */}
-            <aside className="fp-left">
-              {/* Avatar + identity */}
-              <div className="fp-avatar-box">
-                <div className="fp-avatar-img">
-                  {p.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.avatar_url}
-                      alt="Avatar"
-                      className="fp-avatar-img-inner"
-                    />
-                  ) : (
-                    <span className="fp-avatar-placeholder">👤</span>
-                  )}
-                </div>
-                <div className="fp-display-name">{p.display_name || p.username}</div>
-                <div className="fp-username">@{p.username}</div>
-                {p.headline && (
-                  <div className="fp-headline">{p.headline}</div>
-                )}
-              </div>
+          {isEditMode ? (
+            /* ── FREEFORM CANVAS (edit mode) ──────────────────────── */
+            <FreeformCanvas
+              layout={effectiveLayout}
+              sections={sections}
+              selectedId={selectedId ?? null}
+              onSelect={(id) => handleSectionClick(id)}
+              onLayoutChange={onLayoutChange ?? (() => {})}
+              onLayoutCommit={onLayoutCommit ?? (() => {})}
+            />
+          ) : (
+            /* ── NORMAL FLOW (preview/public) ─────────────────────── */
+            <div className="fp-layout">
+              {/* ── LEFT RAIL ── */}
+              <aside className="fp-left">
+                {sections.find((s) => s.id === LAYOUT_IDS.AVATAR_BOX)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.DETAILS)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.CONNECT)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.HIT_COUNTER)?.node}
+              </aside>
 
-              {/* Details */}
-              {(p.location || p.mood || p.relationship_status || p.website) && (
-                <div className="fp-section">
-                  <div className="fp-section-header teal">Details</div>
-                  <div className="fp-section-body">
-                    {p.location && (
-                      <div className="fp-details-row">
-                        <span>📍</span>
-                        <span>{p.location}</span>
-                      </div>
-                    )}
-                    {p.relationship_status && (
-                      <div className="fp-details-row">
-                        <span>💕</span>
-                        <span className="fp-relationship-status">
-                          {formatRelationshipStatus(p.relationship_status)}
-                        </span>
-                      </div>
-                    )}
-                    {p.mood && (
-                      <div className="fp-details-row">
-                        <span>😌</span>
-                        <span>{p.mood}</span>
-                      </div>
-                    )}
-                    {p.website && (
-                      <div className="fp-details-row">
-                        <span>🔗</span>
-                        <span className="fp-website-link">
-                          {p.website}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Connect section (read-only in preview) */}
-              <div className="fp-section">
-                <div className="fp-section-header green">Connect</div>
-                <div className="fp-section-body">
-                  <span
-                    className="fp-btn"
-                    style={{ display: "block", textAlign: "center", cursor: "default" }}
-                  >
-                    ✏️ Edit My Profile
-                  </span>
-                </div>
-              </div>
-
-              {/* Hit counter */}
-              <div className="fp-hitcounter">
-                <HitCounterWidget count={p.hit_count || 0} memberSince={p.created_at} />
-              </div>
-            </aside>
-
-            {/* ── RIGHT COLUMN ── */}
-            <main className="fp-right">
-              {/* Music player */}
-              {p.profile_song_url && (
-                <MusicPlayer
-                  src={p.profile_song_url}
-                  title={p.display_name ?? p.username}
-                />
-              )}
-
-              {/* About Me */}
-              {p.bio && (
-                <div className="fp-section">
-                  <div className="fp-section-header blue">About Me</div>
-                  <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>
-                    {p.bio}
-                  </div>
-                </div>
-              )}
-
-              {/* Custom HTML */}
-              {p.custom_html && (
-                <div
-                  className={`profile-custom-html fp-section ${scopedCssClass}`}
-                  dangerouslySetInnerHTML={{ __html: p.custom_html }}
-                />
-              )}
-
-              {/* Widgets / interests (ProfileSections) */}
-              <ProfileSections profile={p} topFriends={top8Friends} />
-
-              {/* Top 8 Friends */}
-              {top8Friends.length > 0 && (
-                <Top8FriendsWidget friends={top8Friends} />
-              )}
-
-              {/* Guestbook */}
-              <GuestbookWidget profileId={p.id} />
-
-              {/* Shoutbox / Comments */}
-              <ShoutboxWidget profileId={p.id} />
-
-              <p className="fp-coming-soon-note">
-                💬 Testimonials — coming soon
-              </p>
-            </main>
-          </div>
+              {/* ── RIGHT COLUMN ── */}
+              <main className="fp-right">
+                {sections.find((s) => s.id === LAYOUT_IDS.MUSIC_PLAYER)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.ABOUT_ME)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.CUSTOM_HTML)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.WIDGETS)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.TOP_FRIENDS)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.GUESTBOOK)?.node}
+                {sections.find((s) => s.id === LAYOUT_IDS.SHOUTBOX)?.node}
+                <p className="fp-coming-soon-note">
+                  💬 Testimonials — coming soon
+                </p>
+              </main>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

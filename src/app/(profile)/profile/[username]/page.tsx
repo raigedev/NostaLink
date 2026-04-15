@@ -14,6 +14,10 @@ import { degreesLabel, formatRelationshipStatus } from "@/lib/utils";
 import Link from "next/link";
 import AddFriendButton from "@/components/profile/AddFriendButton";
 import SendMessageButton from "@/components/profile/SendMessageButton";
+import PublicProfileFreeformLayout from "@/components/profile/PublicProfileFreeformLayout";
+import { LAYOUT_IDS } from "@/types/layout";
+import { mergeWithDefaults } from "@/lib/defaultLayout";
+import { parseLayoutData } from "@/lib/parseLayoutData";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -111,6 +115,112 @@ export default async function ProfilePage({ params }: Props) {
     }
   }
 
+  // ── Build section nodes for freeform layout (if applicable) ──────────────
+  const parsedLayout = parseLayoutData(profile.layout_data);
+  const freeformLayout = parsedLayout ? mergeWithDefaults(parsedLayout) : null;
+
+  const avatarNode = (
+    <div className="fp-avatar-box">
+      <div className="fp-avatar-img">
+        {profile.avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={profile.avatar_url} alt="Avatar" className="fp-avatar-img-inner" />
+        ) : (
+          <span className="fp-avatar-placeholder">👤</span>
+        )}
+      </div>
+      <div className="fp-display-name">{profile.display_name || profile.username}</div>
+      <div className="fp-username">@{profile.username}</div>
+      {profile.headline && <div className="fp-headline">{profile.headline}</div>}
+    </div>
+  );
+
+  const detailsNode = (profile.location || profile.mood || profile.relationship_status || profile.website) ? (
+    <div className="fp-section">
+      <div className="fp-section-header teal">Details</div>
+      <div className="fp-section-body">
+        {profile.location && <div className="fp-details-row"><span>📍</span><span>{profile.location}</span></div>}
+        {profile.relationship_status && (
+          <div className="fp-details-row">
+            <span>💕</span>
+            <span className="fp-relationship-status">{formatRelationshipStatus(profile.relationship_status)}</span>
+          </div>
+        )}
+        {profile.mood && <div className="fp-details-row"><span>😌</span><span>{profile.mood}</span></div>}
+        {profile.website && (
+          <div className="fp-details-row">
+            <span>🔗</span>
+            <a href={profile.website} target="_blank" rel="noopener noreferrer" className="fp-website-link">{profile.website}</a>
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  const connectNode = (
+    <div className="fp-section">
+      <div className="fp-section-header green">Connect</div>
+      <div className="fp-section-body">
+        {isOwner ? (
+          <Link href={`/profile/${username}/edit`} className="fp-btn">✏️ Edit My Profile</Link>
+        ) : user ? (
+          <>
+            <AddFriendButton profileId={profile.id} initialStatus={friendshipStatus} />
+            <SendMessageButton profileId={profile.id} />
+          </>
+        ) : (
+          <Link href="/login" className="fp-btn">Sign in to connect</Link>
+        )}
+        {degLabel && (
+          <div className="fp-section" style={{ marginTop: "6px" }}>
+            <div className="fp-section-header">Connection</div>
+            <div className="fp-section-body fp-degrees">{degLabel}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const hitCounterNode = (
+    <div className="fp-hitcounter">
+      <HitCounterWidget count={profile.hit_count || 0} memberSince={profile.created_at} />
+    </div>
+  );
+
+  const musicNode = profile.profile_song_url ? (
+    <MusicPlayer src={profile.profile_song_url} title={profile.display_name ?? profile.username} />
+  ) : null;
+
+  const aboutNode = profile.bio ? (
+    <div className="fp-section">
+      <div className="fp-section-header blue">About Me</div>
+      <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>{profile.bio}</div>
+    </div>
+  ) : null;
+
+  const customHtmlNode = profile.custom_html ? (
+    <div className="profile-custom-html fp-section" dangerouslySetInnerHTML={{ __html: profile.custom_html }} />
+  ) : null;
+
+  const widgetsNode = <ProfileSections profile={profile} topFriends={top8Friends} />;
+  const topFriendsNode = top8Friends.length > 0 ? <Top8FriendsWidget friends={top8Friends} /> : null;
+  const guestbookNode = <GuestbookWidget profileId={profile.id} />;
+  const shoutboxNode = <ShoutboxWidget profileId={profile.id} />;
+
+  const allSections = [
+    { id: LAYOUT_IDS.AVATAR_BOX,   node: avatarNode },
+    detailsNode   ? { id: LAYOUT_IDS.DETAILS,       node: detailsNode } : null,
+    { id: LAYOUT_IDS.CONNECT,      node: connectNode },
+    { id: LAYOUT_IDS.HIT_COUNTER,  node: hitCounterNode },
+    musicNode     ? { id: LAYOUT_IDS.MUSIC_PLAYER,  node: musicNode } : null,
+    aboutNode     ? { id: LAYOUT_IDS.ABOUT_ME,      node: aboutNode } : null,
+    customHtmlNode? { id: LAYOUT_IDS.CUSTOM_HTML,   node: customHtmlNode } : null,
+    { id: LAYOUT_IDS.WIDGETS,      node: widgetsNode },
+    topFriendsNode? { id: LAYOUT_IDS.TOP_FRIENDS,   node: topFriendsNode } : null,
+    { id: LAYOUT_IDS.GUESTBOOK,    node: guestbookNode },
+    { id: LAYOUT_IDS.SHOUTBOX,     node: shoutboxNode },
+  ].filter(Boolean) as { id: string; node: React.ReactNode }[];
+
   return (
     <div
       className={`min-h-screen ${theme?.cssClass ?? ""} ${bgModeClass} ${scopedCssClass}`}
@@ -151,163 +261,63 @@ export default async function ProfilePage({ params }: Props) {
           <h1>{(profile.display_name || profile.username) + "'s Profile"}</h1>
         </div>
 
-        {/* Two-column layout */}
-        <div className="fp-layout">
+        {freeformLayout ? (
+          /* ── FREEFORM LAYOUT (when layout_data is saved) ──────── */
+          <PublicProfileFreeformLayout
+            layout={freeformLayout}
+            sections={allSections}
+          />
+        ) : (
+          /* ── DEFAULT TWO-COLUMN LAYOUT ─────────────────────────── */
+          <div className="fp-layout">
 
-          {/* ── LEFT RAIL ── */}
-          <aside className="fp-left">
-
-            {/* Avatar + identity */}
-            <div className="fp-avatar-box">
-              <div className="fp-avatar-img">
-                {profile.avatar_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={profile.avatar_url}
-                    alt="Avatar"
-                    className="fp-avatar-img-inner"
-                  />
-                ) : (
-                  <span className="fp-avatar-placeholder">👤</span>
-                )}
-              </div>
-              <div className="fp-display-name">{profile.display_name || profile.username}</div>
-              <div className="fp-username">@{profile.username}</div>
-              {profile.headline && (
-                <div className="fp-headline">{profile.headline}</div>
-              )}
-            </div>
-
-            {/* Details */}
-            {(profile.location || profile.mood || profile.relationship_status || profile.website) && (
+            {/* ── LEFT RAIL ── */}
+            <aside className="fp-left">
+              {avatarNode}
+              {detailsNode}
+              {/* Social actions */}
               <div className="fp-section">
-                <div className="fp-section-header teal">Details</div>
+                <div className="fp-section-header green">Connect</div>
                 <div className="fp-section-body">
-                  {profile.location && (
-                    <div className="fp-details-row">
-                      <span>📍</span>
-                      <span>{profile.location}</span>
-                    </div>
-                  )}
-                  {profile.relationship_status && (
-                    <div className="fp-details-row">
-                      <span>💕</span>
-                      <span className="fp-relationship-status">
-                        {formatRelationshipStatus(profile.relationship_status)}
-                      </span>
-                    </div>
-                  )}
-                  {profile.mood && (
-                    <div className="fp-details-row">
-                      <span>😌</span>
-                      <span>{profile.mood}</span>
-                    </div>
-                  )}
-                  {profile.website && (
-                    <div className="fp-details-row">
-                      <span>🔗</span>
-                      <a
-                        href={profile.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="fp-website-link"
-                      >
-                        {profile.website}
-                      </a>
-                    </div>
+                  {isOwner ? (
+                    <Link href={`/profile/${username}/edit`} className="fp-btn">
+                      ✏️ Edit My Profile
+                    </Link>
+                  ) : user ? (
+                    <>
+                      <AddFriendButton profileId={profile.id} initialStatus={friendshipStatus} />
+                      <SendMessageButton profileId={profile.id} />
+                    </>
+                  ) : (
+                    <Link href="/login" className="fp-btn">
+                      Sign in to connect
+                    </Link>
                   )}
                 </div>
               </div>
-            )}
-
-            {/* Social actions */}
-            <div className="fp-section">
-              <div className="fp-section-header green">Connect</div>
-              <div className="fp-section-body">
-                {isOwner ? (
-                  <Link href={`/profile/${username}/edit`} className="fp-btn">
-                    ✏️ Edit My Profile
-                  </Link>
-                ) : user ? (
-                  <>
-                    <AddFriendButton profileId={profile.id} initialStatus={friendshipStatus} />
-                    <SendMessageButton profileId={profile.id} />
-                  </>
-                ) : (
-                  <Link href="/login" className="fp-btn">
-                    Sign in to connect
-                  </Link>
-                )}
-              </div>
-            </div>
-
-            {/* Degrees of connection */}
-            {degLabel && (
-              <div className="fp-section">
-                <div className="fp-section-header">Connection</div>
-                <div className="fp-section-body fp-degrees">
-                  {degLabel}
+              {/* Degrees of connection */}
+              {degLabel && (
+                <div className="fp-section">
+                  <div className="fp-section-header">Connection</div>
+                  <div className="fp-section-body fp-degrees">{degLabel}</div>
                 </div>
-              </div>
-            )}
+              )}
+              {hitCounterNode}
+            </aside>
 
-            {/* Hit counter */}
-            <div className="fp-hitcounter">
-              <HitCounterWidget count={profile.hit_count || 0} memberSince={profile.created_at} />
-            </div>
-
-          </aside>
-
-          {/* ── RIGHT COLUMN ── */}
-          <main className="fp-right">
-
-            {/* Profile music — integrated identity element */}
-            {profile.profile_song_url && (
-              <MusicPlayer
-                src={profile.profile_song_url}
-                title={profile.display_name ?? profile.username}
-              />
-            )}
-
-            {/* About Me */}
-            {profile.bio && (
-              <div className="fp-section">
-                <div className="fp-section-header blue">About Me</div>
-                <div className="fp-section-body" style={{ whiteSpace: "pre-wrap" }}>
-                  {profile.bio}
-                </div>
-              </div>
-            )}
-
-            {/* Custom HTML */}
-            {profile.custom_html && (
-              <div
-                className="profile-custom-html fp-section"
-                dangerouslySetInnerHTML={{ __html: profile.custom_html }}
-              />
-            )}
-
-            {/* Widgets / interests (ProfileSections) */}
-            <ProfileSections profile={profile} topFriends={top8Friends} />
-
-            {/* Top 8 Friends */}
-            {top8Friends.length > 0 && (
-              <Top8FriendsWidget friends={top8Friends} />
-            )}
-
-            {/* Guestbook */}
-            <GuestbookWidget profileId={profile.id} />
-
-            {/* Shoutbox / Comments */}
-            <ShoutboxWidget profileId={profile.id} />
-
-            {/* Testimonials — coming soon (subtle note) */}
-            <p className="fp-coming-soon-note">
-              💬 Testimonials — coming soon
-            </p>
-
-          </main>
-        </div>
+            {/* ── RIGHT COLUMN ── */}
+            <main className="fp-right">
+              {musicNode}
+              {aboutNode}
+              {customHtmlNode}
+              {widgetsNode}
+              {topFriendsNode}
+              {guestbookNode}
+              {shoutboxNode}
+              <p className="fp-coming-soon-note">💬 Testimonials — coming soon</p>
+            </main>
+          </div>
+        )}
       </div>
 
       <HitCountTracker profileId={profile.id} />

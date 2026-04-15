@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import WidgetLibrary, { type WidgetDef } from "./WidgetLibrary";
 import type { WidgetConfig } from "@/types/widget";
 import { uploadSlideshowPhoto } from "@/app/actions/profile";
@@ -11,6 +11,8 @@ interface Props {
   initialWidgets: WidgetConfig[];
   profileId: string;
   onSave: (widgets: Record<string, unknown>[]) => void;
+  /** When set, automatically expand this widget's settings panel */
+  focusWidgetId?: string | null;
 }
 
 function createWidget(def: WidgetDef, order: number): WidgetConfig {
@@ -25,13 +27,25 @@ function createWidget(def: WidgetDef, order: number): WidgetConfig {
   };
 }
 
-export default function WidgetEditor({ initialWidgets, onSave }: Props) {
+export default function WidgetEditor({ initialWidgets, onSave, focusWidgetId }: Props) {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(
     [...initialWidgets].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
   );
   const [showLibrary, setShowLibrary] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const dragIndex = useRef<number | null>(null);
+
+  // Auto-expand widget when requested from preview selection
+  useEffect(() => {
+    if (focusWidgetId) {
+      setExpandedId(focusWidgetId);
+      // Scroll the expanded widget into view after a tick
+      setTimeout(() => {
+        const el = document.querySelector(`[data-widget-id="${focusWidgetId}"]`);
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 100);
+    }
+  }, [focusWidgetId]);
 
   function addWidget(def: WidgetDef) {
     const newWidget = createWidget(def, widgets.length);
@@ -110,13 +124,14 @@ export default function WidgetEditor({ initialWidgets, onSave }: Props) {
         {widgets.map((widget, index) => (
           <div
             key={widget.id}
+            data-widget-id={widget.id}
             draggable
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
             onDragEnd={handleDragEnd}
             className={`border rounded-xl overflow-hidden transition ${
               widget.visible ? "border-gray-200 bg-white" : "border-gray-100 bg-gray-50 opacity-60"
-            }`}
+            } ${expandedId === widget.id ? "ring-2 ring-indigo-300" : ""}`}
           >
             {/* Widget Header */}
             <div className="flex items-center gap-3 p-3 cursor-grab active:cursor-grabbing">

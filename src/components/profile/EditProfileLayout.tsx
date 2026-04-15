@@ -3,8 +3,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Profile } from "@/app/actions/profile";
+import { updateLayoutData } from "@/app/actions/profile";
 import ProfileEditor from "./ProfileEditor";
 import ProfilePreviewPanel from "./ProfilePreviewPanel";
+import type { LayoutData } from "@/types/layout";
+import { LAYOUT_IDS } from "@/types/layout";
+import { getDefaultLayout } from "@/lib/defaultLayout";
+import { parseLayoutData } from "@/lib/parseLayoutData";
 
 interface Props {
   profile: Profile;
@@ -23,6 +28,9 @@ const DEFAULT_PANEL_HEIGHT = 320;
 const LS_POSITION = "editprofile_panel_position";
 const LS_WIDTH = "editprofile_panel_width";
 const LS_HEIGHT = "editprofile_panel_height";
+
+/** Debounce delay (ms) before persisting layout changes to the server */
+const LAYOUT_SAVE_DEBOUNCE_MS = 800;
 
 function readLS(key: string, fallback: string): string {
   try {
@@ -46,6 +54,27 @@ const POSITION_OPTIONS: { pos: PanelPosition; icon: string; label: string }[] = 
 ];
 
 /**
+ * Maps a layout element ID to the ProfileEditor tab (and optionally widgetId)
+ * that should be focused when that element is selected in the live preview.
+ */
+function elementToEditorFocus(id: string): { tab: string; widgetId?: string } {
+  if (id === LAYOUT_IDS.AVATAR_BOX)    return { tab: "Basic Info" };
+  if (id === LAYOUT_IDS.DETAILS)       return { tab: "Basic Info" };
+  if (id === LAYOUT_IDS.CONNECT)       return { tab: "Basic Info" };
+  if (id === LAYOUT_IDS.HIT_COUNTER)   return { tab: "Basic Info" };
+  if (id === LAYOUT_IDS.MUSIC_PLAYER)  return { tab: "Music" };
+  if (id === LAYOUT_IDS.ABOUT_ME)      return { tab: "Basic Info" };
+  if (id === LAYOUT_IDS.CUSTOM_HTML)   return { tab: "Custom HTML" };
+  if (id === LAYOUT_IDS.WIDGETS)       return { tab: "Widgets" };
+  if (id === LAYOUT_IDS.TOP_FRIENDS)   return { tab: "Top 8" };
+  if (id === LAYOUT_IDS.GUESTBOOK)     return { tab: "Widgets" };
+  if (id === LAYOUT_IDS.SHOUTBOX)      return { tab: "Widgets" };
+  // widget-{widgetId}
+  if (id.startsWith("widget-"))        return { tab: "Widgets", widgetId: id.slice(7) };
+  return { tab: "Basic Info" };
+}
+
+/**
  * Full-screen profile customization workspace.
  *
  * Desktop layout supports four panel positions: left, right, top, bottom.
@@ -53,6 +82,11 @@ const POSITION_OPTIONS: { pos: PanelPosition; icon: string; label: string }[] = 
  * The user's preference is persisted in localStorage.
  *
  * Mobile: toggle between Editor and Preview (unchanged).
+ *
+ * Now also includes:
+ * - Freeform layout editor in the live preview (drag + resize)
+ * - Click/tap any preview element to jump to the relevant editor section
+ * - Layout state persisted per profile
  */
 export default function EditProfileLayout({ profile }: Props) {
   const [draft, setDraft] = useState<Partial<Profile>>({});
@@ -62,6 +96,18 @@ export default function EditProfileLayout({ profile }: Props) {
   const [panelHeight, setPanelHeight] = useState(DEFAULT_PANEL_HEIGHT);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showPositionPicker, setShowPositionPicker] = useState(false);
+
+  // ── Freeform layout state ──────────────────────────────────────────────────
+  const [layoutData, setLayoutData] = useState<LayoutData | null>(
+    parseLayoutData(profile.layout_data),
+  );
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  // requestedTab / requestedWidgetId: used to tell ProfileEditor to switch tabs
+  const [requestedTab, setRequestedTab] = useState<string | null>(null);
+  const [requestedWidgetId, setRequestedWidgetId] = useState<string | null>(null);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const [layoutSaveMsg, setLayoutSaveMsg] = useState<string | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const dragging = useRef(false);
   const dragStartX = useRef(0);
@@ -228,10 +274,86 @@ export default function EditProfileLayout({ profile }: Props) {
     /* bottom */                    return "left-1/2 -translate-x-1/2 -bottom-3.5";
   }
 
+  // ── Freeform layout handlers ─────────────────────────────────────────────
+
+  /** Called live during drag/resize (for visual update only — no persistence) */
+  const handleLayoutChange = useCallback((newLayout: LayoutData) => {
+    setLayoutData(newLayout);
+  }, []);
+
+  /** Called when drag/resize ends — persist to DB (debounced) */
+  const handleLayoutCommit = useCallback((newLayout: LayoutData) => {
+    setLayoutData(newLayout);
+    // Debounce to avoid hammering the server on every small move
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      setIsSavingLayout(true);
+      const result = await updateLayoutData(newLayout);
+      setIsSavingLayout(false);
+      if (result?.error) {
+        setLayoutSaveMsg("⚠ Layout save failed");
+      } else {
+        setLayoutSaveMsg("✓ Layout saved");
+      }
+      setTimeout(() => setLayoutSaveMsg(null), 3000);
+    }, LAYOUT_SAVE_DEBOUNCE_MS);
+  }, []);
+
+  /** Called when user clicks/taps an element in the live preview */
+  const handleElementSelect = useCallback((id: string) => {
+    if (!id) {
+      setSelectedElementId(null);
+      return;
+    }
+    setSelectedElementId(id);
+    const { tab, widgetId } = elementToEditorFocus(id);
+    setRequestedTab(tab);
+    setRequestedWidgetId(widgetId ?? null);
+    // Reset after a tick so the effect re-fires if the same element is clicked again
+    setTimeout(() => {
+      setRequestedTab(null);
+      setRequestedWidgetId(null);
+    }, 200);
+  }, []);
+
+  /** Reset a single element back to its default position */
+  const handleResetElement = useCallback((id: string) => {
+    const defaults = getDefaultLayout();
+    const defaultItem = defaults.items.find((i) => i.id === id);
+    if (!defaultItem) return;
+    const current = layoutData ?? getDefaultLayout();
+    const updated: LayoutData = {
+      ...current,
+      items: current.items.map((item) =>
+        item.id === id ? { ...defaultItem } : item,
+      ),
+    };
+    setLayoutData(updated);
+    handleLayoutCommit(updated);
+  }, [layoutData, handleLayoutCommit]);
+
+  /** Reset entire layout to defaults */
+  const handleResetLayout = useCallback(() => {
+    if (!window.confirm("Reset the entire layout to its default positions?")) return;
+    const defaults = getDefaultLayout();
+    setLayoutData(defaults);
+    handleLayoutCommit(defaults);
+    setSelectedElementId(null);
+  }, [handleLayoutCommit]);
+
   // ── Desktop workspace sub-elements ──────────────────────────────────────
   const previewCanvas = (
     <div className={`flex-1 overflow-y-auto ${isHorizontal ? "min-w-0" : "min-h-0"}`}>
-      <ProfilePreviewPanel profile={profile} draftOverrides={draft} />
+      <ProfilePreviewPanel
+        profile={profile}
+        draftOverrides={draft}
+        isEditMode={true}
+        layoutData={layoutData}
+        selectedId={selectedElementId}
+        onSelect={handleElementSelect}
+        onLayoutChange={handleLayoutChange}
+        onLayoutCommit={handleLayoutCommit}
+      />
     </div>
   );
 
@@ -258,7 +380,37 @@ export default function EditProfileLayout({ profile }: Props) {
           : { minHeight: MIN_PANEL_HEIGHT }
         }
       >
-        <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
+        <ProfileEditor
+          profile={profile}
+          onDraftChange={handleDraftChange}
+          requestedTab={requestedTab}
+          requestedWidgetId={requestedWidgetId}
+        />
+
+        {/* ── Layout reset actions ─────────────────────────────────── */}
+        <div className="mt-4 pt-3 border-t border-gray-100 px-1">
+          <p className="text-xs text-gray-400 font-medium mb-2">Layout Actions</p>
+          <div className="flex gap-2 flex-wrap">
+            {selectedElementId && (
+              <button
+                type="button"
+                onClick={() => handleResetElement(selectedElementId)}
+                className="px-3 py-1.5 text-xs border border-amber-200 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition"
+                title={`Reset "${selectedElementId}" to its default position`}
+              >
+                ↺ Reset selected
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleResetLayout}
+              className="px-3 py-1.5 text-xs border border-red-200 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition"
+              title="Reset all elements to their default positions"
+            >
+              ↺ Reset all layout
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -326,7 +478,7 @@ export default function EditProfileLayout({ profile }: Props) {
 
         <span className="text-sm font-semibold text-gray-800">✏️ Edit Profile</span>
 
-        {/* Right side: unsaved indicator + panel position picker + mobile toggle */}
+        {/* Right side: unsaved indicator + layout save status + panel position picker + mobile toggle */}
         <div className="ml-auto flex items-center gap-2">
           {hasUnsavedChanges && (
             <span
@@ -335,6 +487,21 @@ export default function EditProfileLayout({ profile }: Props) {
               className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 hidden sm:inline-flex"
             >
               ● Unsaved changes
+            </span>
+          )}
+
+          {/* Layout save status */}
+          {(isSavingLayout || layoutSaveMsg) && (
+            <span
+              role="status"
+              aria-live="polite"
+              className={`text-xs font-medium rounded-full px-2.5 py-0.5 hidden sm:inline-flex ${
+                layoutSaveMsg?.startsWith("⚠")
+                  ? "bg-red-50 border border-red-200 text-red-600"
+                  : "bg-green-50 border border-green-200 text-green-600"
+              }`}
+            >
+              {isSavingLayout ? "💾 Saving layout…" : layoutSaveMsg}
             </span>
           )}
 
@@ -417,12 +584,37 @@ export default function EditProfileLayout({ profile }: Props) {
         {activeView === "editor" ? (
           <div className="flex-1 overflow-y-auto bg-gray-50">
             <div className="p-2">
-              <ProfileEditor profile={profile} onDraftChange={handleDraftChange} />
+              <ProfileEditor
+                profile={profile}
+                onDraftChange={handleDraftChange}
+                requestedTab={requestedTab}
+                requestedWidgetId={requestedWidgetId}
+              />
+              {/* Mobile layout reset actions */}
+              <div className="mt-4 pt-3 border-t border-gray-200 px-1">
+                <p className="text-xs text-gray-400 font-medium mb-2">Layout Actions</p>
+                <button
+                  type="button"
+                  onClick={handleResetLayout}
+                  className="px-3 py-1.5 text-xs border border-red-200 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition"
+                >
+                  ↺ Reset layout to defaults
+                </button>
+              </div>
             </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto">
-            <ProfilePreviewPanel profile={profile} draftOverrides={draft} />
+            <ProfilePreviewPanel
+              profile={profile}
+              draftOverrides={draft}
+              isEditMode={true}
+              layoutData={layoutData}
+              selectedId={selectedElementId}
+              onSelect={handleElementSelect}
+              onLayoutChange={handleLayoutChange}
+              onLayoutCommit={handleLayoutCommit}
+            />
           </div>
         )}
       </div>
