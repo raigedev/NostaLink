@@ -13,6 +13,7 @@ import {
   AUDIO_CONSTRAINTS,
 } from "@/lib/security/upload-validator";
 import { usernameSchema } from "@/lib/validations";
+import type { LayoutData } from "@/types/layout";
 
 export interface Profile {
   id: string;
@@ -512,7 +513,7 @@ const layoutDataSchema = z.object({
   ).max(50),
 }).nullable();
 
-export async function updateLayoutData(layoutData: { version: 1; items: Array<{ id: string; x: number; y: number; w: number }> } | null) {
+export async function updateLayoutData(layoutData: LayoutData | null) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };

@@ -29,6 +29,9 @@ const LS_POSITION = "editprofile_panel_position";
 const LS_WIDTH = "editprofile_panel_width";
 const LS_HEIGHT = "editprofile_panel_height";
 
+/** Debounce delay (ms) before persisting layout changes to the server */
+const LAYOUT_SAVE_DEBOUNCE_MS = 800;
+
 function readLS(key: string, fallback: string): string {
   try {
     return localStorage.getItem(key) ?? fallback;
@@ -293,7 +296,7 @@ export default function EditProfileLayout({ profile }: Props) {
         setLayoutSaveMsg("✓ Layout saved");
       }
       setTimeout(() => setLayoutSaveMsg(null), 3000);
-    }, 800);
+    }, LAYOUT_SAVE_DEBOUNCE_MS);
   }, []);
 
   /** Called when user clicks/taps an element in the live preview */

@@ -39,6 +39,12 @@ interface Props {
 
 const GAP = 8; // minimum pixel gap between items
 
+/**
+ * Maximum iterations for the push-down collision resolver.
+ * Prevents an infinite loop when items are arranged in a tight cycle.
+ */
+const MAX_COLLISION_ITERATIONS = 30;
+
 /** Approximate heights per id for collision resolution */
 const APPROX_HEIGHTS: Record<string, number> = {
   "avatar-box":   210,
@@ -91,7 +97,7 @@ function resolveCollisions(
   let result = [...items];
   let changed = true;
   let iterations = 0;
-  while (changed && iterations < 30) {
+  while (changed && iterations < MAX_COLLISION_ITERATIONS) {
     changed = false;
     iterations++;
     const moved = result.find((i) => i.id === movedId)!;
