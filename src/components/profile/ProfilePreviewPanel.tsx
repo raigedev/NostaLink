@@ -55,11 +55,12 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
       return;
     }
     const supabase = createClient();
-    supabase
-      .from("profiles")
-      .select("id, username, display_name, avatar_url")
-      .in("id", ids)
-      .then(({ data, error }) => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, username, display_name, avatar_url")
+          .in("id", ids);
         if (error) {
           console.error("ProfilePreviewPanel: failed to fetch top friends", error);
           return;
@@ -68,7 +69,10 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
           const map = new Map(data.map((f: Friend) => [f.id, f]));
           setTop8Friends(ids.map((id) => map.get(id)).filter(Boolean) as Friend[]);
         }
-      });
+      } catch (err) {
+        console.error("ProfilePreviewPanel: unexpected error fetching top friends", err);
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topFriendIdsKey]);
 
