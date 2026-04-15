@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const SAMPLE_PHOTOS = [
   "https://picsum.photos/seed/a/400/300",
@@ -8,20 +8,69 @@ const SAMPLE_PHOTOS = [
   "https://picsum.photos/seed/c/400/300",
 ];
 
+const TRANSITION_DURATION = 350; // ms
+
 interface Props {
   photos?: string[];
+  transition?: "fade" | "slide" | "none";
+  interval?: "slow" | "normal" | "fast";
 }
 
-export default function PhotoSlideshowWidget({ photos }: Props) {
+export default function PhotoSlideshowWidget({
+  photos,
+  transition = "fade",
+  interval = "normal",
+}: Props) {
   const displayPhotos = photos && photos.length > 0 ? photos : SAMPLE_PHOTOS;
   const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const indexRef = useRef(0);
+  const transitioningRef = useRef(false);
   const safeIndex = displayPhotos.length > 0 ? index % displayPhotos.length : 0;
+
+  const intervalMs = interval === "slow" ? 5000 : interval === "fast" ? 1500 : 3000;
+
+  const goTo = useCallback((next: number) => {
+    if (next === indexRef.current || transitioningRef.current) return;
+    if (transition === "none") {
+      indexRef.current = next;
+      setIndex(next);
+    } else {
+      transitioningRef.current = true;
+      setVisible(false);
+      setTimeout(() => {
+        indexRef.current = next;
+        setIndex(next);
+        setVisible(true);
+        transitioningRef.current = false;
+      }, TRANSITION_DURATION);
+    }
+  }, [transition]);
 
   useEffect(() => {
     if (displayPhotos.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % displayPhotos.length), 3000);
+    const id = setInterval(() => {
+      const next = (indexRef.current + 1) % displayPhotos.length;
+      goTo(next);
+    }, intervalMs);
     return () => clearInterval(id);
-  }, [displayPhotos]);
+  }, [displayPhotos.length, intervalMs, goTo]);
+
+  const imgStyle: React.CSSProperties =
+    transition === "none"
+      ? {}
+      : {
+          opacity: visible ? 1 : 0,
+          transform:
+            transition === "slide"
+              ? visible
+                ? "translateX(0)"
+                : "translateX(-20px)"
+              : undefined,
+          transition: `opacity ${TRANSITION_DURATION}ms ease${
+            transition === "slide" ? `, transform ${TRANSITION_DURATION}ms ease` : ""
+          }`,
+        };
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border-color)" }}>
@@ -29,13 +78,14 @@ export default function PhotoSlideshowWidget({ photos }: Props) {
       <img
         src={displayPhotos[safeIndex]}
         alt={`Slide ${safeIndex + 1}`}
-        className="w-full h-40 object-cover transition-opacity"
+        className="w-full h-40 object-cover"
+        style={imgStyle}
       />
       <div className="flex justify-center gap-1.5 p-2" style={{ backgroundColor: "var(--card-bg)" }}>
         {displayPhotos.map((_, i) => (
           <button
             key={i}
-            onClick={() => setIndex(i)}
+            onClick={() => goTo(i)}
             className={`w-2 h-2 rounded-full transition ${i === safeIndex ? "bg-indigo-600" : "bg-gray-300"}`}
           />
         ))}
