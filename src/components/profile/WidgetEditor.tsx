@@ -273,6 +273,7 @@ function WidgetSettings({
           photos={(s.photos as string[]) ?? []}
           transition={(s.transition as "fade" | "slide" | "none") ?? "fade"}
           interval={(s.interval as "slow" | "normal" | "fast") ?? "normal"}
+          displayMode={(s.displayMode as "fill" | "fit") ?? "fill"}
           onChange={onChange}
         />
       );
@@ -291,12 +292,14 @@ function SlideshowSettings({
   photos,
   transition,
   interval,
+  displayMode,
   onChange,
 }: {
   widgetId: string;
   photos: string[];
   transition: "fade" | "slide" | "none";
   interval: "slow" | "normal" | "fast";
+  displayMode: "fill" | "fit";
   onChange: (id: string, key: string, value: unknown) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -372,6 +375,18 @@ function SlideshowSettings({
       </label>
 
       <div className="border-t border-gray-100 pt-3 space-y-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600">Display Mode</label>
+          <select
+            value={displayMode}
+            onChange={(e) => onChange(widgetId, "displayMode", e.target.value)}
+            className="w-full px-2 py-1.5 border rounded text-sm mt-1"
+          >
+            <option value="fill">Fill (covers widget area)</option>
+            <option value="fit">Fit (full image visible)</option>
+          </select>
+        </div>
+
         <div>
           <label className="block text-xs font-medium text-gray-600">Transition Style</label>
           <select
