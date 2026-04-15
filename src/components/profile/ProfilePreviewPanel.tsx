@@ -1,10 +1,24 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import type { Profile } from "@/app/actions/profile";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
 import { formatRelationshipStatus } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import MusicPlayer from "./MusicPlayer";
+import ProfileSections from "./ProfileSections";
+import HitCounterWidget from "./widgets/HitCounterWidget";
+import GuestbookWidget from "./widgets/GuestbookWidget";
+import ShoutboxWidget from "./widgets/ShoutboxWidget";
+import Top8FriendsWidget from "./widgets/Top8FriendsWidget";
+
+interface Friend {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface Props {
   /** Saved profile (base data) */
@@ -25,6 +39,43 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
   // Merge saved profile with draft overrides
   const p: Profile = { ...profile, ...draftOverrides };
 
+  // Fetch full friend objects for Top 8 display — IDs come from draft/profile
+  const [top8Friends, setTop8Friends] = useState<Friend[]>([]);
+  // Memoize the stringified key so it only recomputes when top_friends changes
+  const topFriendIdsKey = useMemo(
+    () => JSON.stringify(p.top_friends ?? []),
+    // p is recomputed each render; use the underlying sources for stable deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profile.top_friends, draftOverrides.top_friends],
+  );
+  useEffect(() => {
+    const ids = p.top_friends;
+    if (!ids || ids.length === 0) {
+      setTop8Friends([]);
+      return;
+    }
+    const supabase = createClient();
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, username, display_name, avatar_url")
+          .in("id", ids);
+        if (error) {
+          console.error("ProfilePreviewPanel: failed to fetch top friends", error);
+          return;
+        }
+        if (data) {
+          const map = new Map(data.map((f: Friend) => [f.id, f]));
+          setTop8Friends(ids.map((id) => map.get(id)).filter(Boolean) as Friend[]);
+        }
+      } catch (err) {
+        console.error("ProfilePreviewPanel: unexpected error fetching top friends", err);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topFriendIdsKey]);
+
   const theme = getTheme(p.theme_id ?? "minimalist");
   const font = getFont(p.font_id ?? "inter");
   const fontUrl = font ? getFontUrl(font) : null;
@@ -38,8 +89,6 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
 
   const bgModeClass = p.bg_mode ? `bg-mode-${p.bg_mode}` : "";
   const scopedCssClass = `profile-custom-${p.id}`;
-  const widgets = (p.widgets as Record<string, unknown>[] | null) ?? [];
-  const TOP_FRIENDS_MAX = 8;
 
   return (
     <div className="preview-panel-root">
@@ -187,6 +236,11 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
                   </span>
                 </div>
               </div>
+
+              {/* Hit counter */}
+              <div className="fp-hitcounter">
+                <HitCounterWidget count={p.hit_count || 0} memberSince={p.created_at} />
+              </div>
             </aside>
 
             {/* ── RIGHT COLUMN ── */}
@@ -217,24 +271,19 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
                 />
               )}
 
-              {/* Placeholder for widgets/top8 (shown when present in saved data) */}
-              {widgets.length > 0 && (
-                <div className="fp-section">
-                  <div className="fp-section-header blue">Widgets</div>
-                  <div className="fp-section-body" style={{ fontSize: "11px", opacity: 0.75 }}>
-                    {widgets.length} widget(s) configured
-                  </div>
-                </div>
+              {/* Widgets / interests (ProfileSections) */}
+              <ProfileSections profile={p} topFriends={top8Friends} />
+
+              {/* Top 8 Friends */}
+              {top8Friends.length > 0 && (
+                <Top8FriendsWidget friends={top8Friends} />
               )}
 
-              {(p.top_friends && p.top_friends.length > 0) && (
-                <div className="fp-section">
-                  <div className="fp-section-header green">Top {Math.min(p.top_friends.length, TOP_FRIENDS_MAX)}</div>
-                  <div className="fp-section-body" style={{ fontSize: "11px", opacity: 0.75 }}>
-                    {p.top_friends.length} friend(s) in your Top {Math.min(p.top_friends.length, TOP_FRIENDS_MAX)}
-                  </div>
-                </div>
-              )}
+              {/* Guestbook */}
+              <GuestbookWidget profileId={p.id} />
+
+              {/* Shoutbox / Comments */}
+              <ShoutboxWidget profileId={p.id} />
 
               <p className="fp-coming-soon-note">
                 💬 Testimonials — coming soon
@@ -242,6 +291,21 @@ export default function ProfilePreviewPanel({ profile, draftOverrides }: Props) 
             </main>
           </div>
         </div>
+
+        {/* Footer */}
+        <footer
+          style={{
+            marginTop: "20px",
+            padding: "10px",
+            textAlign: "center",
+            fontSize: "11px",
+            opacity: 0.5,
+            borderTop: "1px solid var(--border-color)",
+          }}
+        >
+          <span style={{ fontWeight: "bold" }}>✦ NostaLink</span>
+          {" "}— Your Digital Home
+        </footer>
       </div>
     </div>
   );
