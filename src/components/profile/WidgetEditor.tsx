@@ -306,6 +306,11 @@ function SlideshowSettings({
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image must be under 5 MB. Please choose a smaller file.");
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
