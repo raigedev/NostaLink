@@ -12,31 +12,31 @@ interface Props {
   photos?: string[];
 }
 
-export default function PhotoSlideshowWidget({ photos = SAMPLE_PHOTOS }: Props) {
+export default function PhotoSlideshowWidget({ photos }: Props) {
+  const displayPhotos = photos && photos.length > 0 ? photos : SAMPLE_PHOTOS;
   const [index, setIndex] = useState(0);
+  const safeIndex = displayPhotos.length > 0 ? index % displayPhotos.length : 0;
 
   useEffect(() => {
-    if (photos.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % photos.length), 3000);
+    if (displayPhotos.length <= 1) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % displayPhotos.length), 3000);
     return () => clearInterval(id);
-  }, [photos]);
-
-  if (photos.length === 0) return null;
+  }, [displayPhotos]);
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border-color)" }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={photos[index]}
-        alt={`Slide ${index + 1}`}
+        src={displayPhotos[safeIndex]}
+        alt={`Slide ${safeIndex + 1}`}
         className="w-full h-40 object-cover transition-opacity"
       />
       <div className="flex justify-center gap-1.5 p-2" style={{ backgroundColor: "var(--card-bg)" }}>
-        {photos.map((_, i) => (
+        {displayPhotos.map((_, i) => (
           <button
             key={i}
             onClick={() => setIndex(i)}
-            className={`w-2 h-2 rounded-full transition ${i === index ? "bg-indigo-600" : "bg-gray-300"}`}
+            className={`w-2 h-2 rounded-full transition ${i === safeIndex ? "bg-indigo-600" : "bg-gray-300"}`}
           />
         ))}
       </div>

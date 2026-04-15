@@ -62,7 +62,7 @@ export default function WidgetRenderer({
       return <MusicPlaylistWidget />;
 
     case "photo_slideshow":
-      return <PhotoSlideshowWidget />;
+      return <PhotoSlideshowWidget photos={s.photos as string[] | undefined} />;
 
     case "guestbook":
       return <GuestbookWidget profileId={profileId} />;

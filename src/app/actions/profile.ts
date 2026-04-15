@@ -300,6 +300,12 @@ export async function uploadProfileBackground(formData: FormData) {
   return { success: true, url: result.url };
 }
 
+export async function uploadSlideshowPhoto(formData: FormData) {
+  const file = formData.get("file") as File | null;
+  if (!file) return { error: "No file provided" };
+  return uploadFileToStorage("profile-backgrounds", file, BACKGROUND_CONSTRAINTS);
+}
+
 export async function uploadProfileAudio(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
