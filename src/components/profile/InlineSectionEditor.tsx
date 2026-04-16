@@ -479,7 +479,6 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               justifyContent: "center",
               cursor: uploadingAvatar ? "wait" : "pointer",
               padding: 0,
-              pointerEvents: uploadingAvatar ? "none" : "auto",
             }}
           >
             {uploadingAvatar ? "…" : "📷"}
@@ -488,6 +487,7 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               type="file"
               accept="image/*"
               aria-label="Upload avatar image"
+              disabled={uploadingAvatar}
               style={{ display: "none" }}
               onChange={handleAvatarUpload}
             />
