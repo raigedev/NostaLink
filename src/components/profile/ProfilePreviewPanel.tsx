@@ -185,7 +185,7 @@ export default function ProfilePreviewPanel({
 
   // ── Build named sections for FreeformCanvas ──────────────────────────────
   const sections = useMemo(() => {
-    const avatarCoverUrl = safeCssUrl(p.cover_url);
+    const coverPhotoUrl = safeCssUrl(p.cover_url);
 
     // Avatar + identity
     const avatarSection = {
@@ -193,10 +193,10 @@ export default function ProfilePreviewPanel({
       node: wrapSection(
         LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
-          {avatarCoverUrl && (
+          {coverPhotoUrl && (
             <div
               className="fp-cover-photo"
-              style={{ backgroundImage: `url(${avatarCoverUrl})` }}
+              style={{ backgroundImage: `url(${coverPhotoUrl})` }}
             />
           )}
           <div className="fp-avatar-img">
