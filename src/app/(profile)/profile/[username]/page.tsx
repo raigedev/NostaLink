@@ -118,13 +118,14 @@ export default async function ProfilePage({ params }: Props) {
   // ── Build section nodes for freeform layout (if applicable) ──────────────
   const parsedLayout = parseLayoutData(profile.layout_data);
   const freeformLayout = parsedLayout ? mergeWithDefaults(parsedLayout) : null;
+  const coverBgUrl = safeCssUrl(profile.cover_url);
 
   const avatarNode = (
     <div className="fp-avatar-box">
-      {safeCssUrl(profile.cover_url) && (
+      {coverBgUrl && (
         <div
           className="fp-cover-photo"
-          style={{ backgroundImage: `url(${safeCssUrl(profile.cover_url)})` }}
+          style={{ backgroundImage: `url(${coverBgUrl})` }}
         />
       )}
       <div className="fp-avatar-img">

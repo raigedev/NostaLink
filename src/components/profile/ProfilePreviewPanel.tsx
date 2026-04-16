@@ -185,16 +185,18 @@ export default function ProfilePreviewPanel({
 
   // ── Build named sections for FreeformCanvas ──────────────────────────────
   const sections = useMemo(() => {
+    const avatarCoverUrl = safeCssUrl(p.cover_url);
+
     // Avatar + identity
     const avatarSection = {
       id: LAYOUT_IDS.AVATAR_BOX,
       node: wrapSection(
         LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
-          {safeCssUrl(p.cover_url) && (
+          {avatarCoverUrl && (
             <div
               className="fp-cover-photo"
-              style={{ backgroundImage: `url(${safeCssUrl(p.cover_url)})` }}
+              style={{ backgroundImage: `url(${avatarCoverUrl})` }}
             />
           )}
           <div className="fp-avatar-img">
@@ -371,7 +373,7 @@ export default function ProfilePreviewPanel({
     // changes (for display).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    p.avatar_url, p.display_name, p.username, p.headline,
+    p.avatar_url, p.cover_url, p.display_name, p.username, p.headline,
     p.location, p.mood, p.relationship_status, p.website,
     p.hit_count, p.created_at, p.profile_song_url,
     p.bio, p.custom_html, p.id,

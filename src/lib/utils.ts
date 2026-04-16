@@ -79,10 +79,12 @@ export function formatRelationshipStatus(status: string): string {
  */
 export function safeCssUrl(url: string | null | undefined): string | null {
   if (!url) return null;
+  // Reject dangerous CSS url() characters in the raw input before parsing
+  if (/[\s"'()\\]/.test(url)) return null;
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-    // Reject characters that are dangerous in CSS url() even with quotes
+    // Also validate the normalized href to catch any characters introduced by normalization
     if (/[\s"'()\\]/.test(parsed.href)) return null;
     return parsed.href;
   } catch {
