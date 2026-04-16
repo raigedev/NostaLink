@@ -311,6 +311,15 @@ body {
   background: var(--fp-panel-bg);
   border: 1px solid var(--fp-panel-border);
   margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.fp-cover-photo {
+  height: 70px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--fp-panel-border);
+  margin: -10px -8px 10px;
 }
 
 .fp-avatar-img {

@@ -191,6 +191,12 @@ export default function ProfilePreviewPanel({
       node: wrapSection(
         LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
+          {p.cover_url && (
+            <div
+              className="fp-cover-photo"
+              style={{ backgroundImage: `url(${p.cover_url})` }}
+            />
+          )}
           <div className="fp-avatar-img">
             {p.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element

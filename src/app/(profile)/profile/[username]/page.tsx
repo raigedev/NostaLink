@@ -121,6 +121,12 @@ export default async function ProfilePage({ params }: Props) {
 
   const avatarNode = (
     <div className="fp-avatar-box">
+      {profile.cover_url && (
+        <div
+          className="fp-cover-photo"
+          style={{ backgroundImage: `url(${profile.cover_url})` }}
+        />
+      )}
       <div className="fp-avatar-img">
         {profile.avatar_url ? (
           // eslint-disable-next-line @next/next/no-img-element

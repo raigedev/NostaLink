@@ -461,10 +461,7 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               <span>👤</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            disabled={uploadingAvatar}
+          <label
             title="Upload avatar"
             style={{
               position: "absolute",
@@ -473,7 +470,7 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               width: 20,
               height: 20,
               borderRadius: "50%",
-              background: "#6366f1",
+              background: uploadingAvatar ? "#a5b4fc" : "#6366f1",
               border: "2px solid #fff",
               color: "#fff",
               fontSize: 9,
@@ -482,17 +479,18 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               justifyContent: "center",
               cursor: uploadingAvatar ? "wait" : "pointer",
               padding: 0,
+              pointerEvents: uploadingAvatar ? "none" : "auto",
             }}
           >
             {uploadingAvatar ? "…" : "📷"}
-          </button>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={handleAvatarUpload}
-          />
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleAvatarUpload}
+            />
+          </label>
         </div>
 
         {/* Display name + upload hint */}
