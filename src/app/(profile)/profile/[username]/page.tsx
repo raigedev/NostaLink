@@ -121,7 +121,7 @@ export default async function ProfilePage({ params }: Props) {
 
   const avatarNode = (
     <div className="fp-avatar-box">
-      {profile.cover_url && (
+      {profile.cover_url && /^https?:\/\/[^\s"')]+$/.test(profile.cover_url) && (
         <div
           className="fp-cover-photo"
           style={{ backgroundImage: `url(${profile.cover_url})` }}
