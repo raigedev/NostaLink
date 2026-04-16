@@ -70,3 +70,24 @@ export function degreesLabel(degrees: number | null): string | null {
 export function formatRelationshipStatus(status: string): string {
   return status.replace(/_/g, " ");
 }
+
+/**
+ * Validates a URL for safe use inside a CSS `url()` value.
+ * Returns the URL if it is a valid http/https URL with no characters that
+ * could break out of the CSS url() context (whitespace, quotes, parentheses,
+ * backslash). Returns null otherwise.
+ */
+export function safeCssUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Reject dangerous CSS url() characters in the raw input before parsing
+  if (/[\s"'()\\]/.test(url)) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    // Also validate the normalized href to catch any characters introduced by normalization
+    if (/[\s"'()\\]/.test(parsed.href)) return null;
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}

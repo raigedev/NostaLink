@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Profile } from "@/app/actions/profile";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
-import { formatRelationshipStatus } from "@/lib/utils";
+import { formatRelationshipStatus, safeCssUrl } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import MusicPlayer from "./MusicPlayer";
 import ProfileSections from "./ProfileSections";
@@ -185,12 +185,20 @@ export default function ProfilePreviewPanel({
 
   // ── Build named sections for FreeformCanvas ──────────────────────────────
   const sections = useMemo(() => {
+    const coverPhotoUrl = safeCssUrl(p.cover_url);
+
     // Avatar + identity
     const avatarSection = {
       id: LAYOUT_IDS.AVATAR_BOX,
       node: wrapSection(
         LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
+          {coverPhotoUrl && (
+            <div
+              className="fp-cover-photo"
+              style={{ backgroundImage: `url(${coverPhotoUrl})` }}
+            />
+          )}
           <div className="fp-avatar-img">
             {p.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -365,7 +373,7 @@ export default function ProfilePreviewPanel({
     // changes (for display).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    p.avatar_url, p.display_name, p.username, p.headline,
+    p.avatar_url, p.cover_url, p.display_name, p.username, p.headline,
     p.location, p.mood, p.relationship_status, p.website,
     p.hit_count, p.created_at, p.profile_song_url,
     p.bio, p.custom_html, p.id,
