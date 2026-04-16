@@ -434,20 +434,28 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
     >
       {/* Avatar + display name row */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "10px", alignItems: "flex-start" }}>
-        {/* Avatar preview with upload overlay */}
-        <div style={{ position: "relative", flexShrink: 0 }}>
-          <div
+        {/* Avatar preview with click-to-upload */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button
+            type="button"
+            title="Click to change avatar"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="avatar-upload-btn"
             style={{
+              position: "relative",
               width: 56,
               height: 56,
               borderRadius: "50%",
               overflow: "hidden",
               background: "#e5e7eb",
+              border: "2px solid #c7d2fe",
+              padding: 0,
+              cursor: uploadingAvatar ? "wait" : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: 24,
-              border: "2px solid #c7d2fe",
             }}
           >
             {avatarUrl ? (
@@ -460,38 +468,51 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
             ) : (
               <span>👤</span>
             )}
-          </div>
-          <label
-            title="Upload avatar"
+            {/* Camera overlay on hover */}
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 16,
+                opacity: uploadingAvatar ? 1 : 0,
+                transition: "opacity 0.15s",
+              }}
+              className="avatar-upload-overlay"
+            >
+              {uploadingAvatar ? "…" : "📷"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
             style={{
-              position: "absolute",
-              bottom: -2,
-              right: -2,
-              width: 20,
-              height: 20,
-              borderRadius: "50%",
-              background: uploadingAvatar ? "#a5b4fc" : "#6366f1",
-              border: "2px solid #fff",
-              color: "#fff",
-              fontSize: 9,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              padding: "3px 8px",
+              borderRadius: "6px",
+              border: "1px solid #d1d5db",
+              background: "#fff",
+              fontSize: "10px",
               cursor: uploadingAvatar ? "wait" : "pointer",
-              padding: 0,
+              color: "#374151",
+              whiteSpace: "nowrap",
             }}
           >
-            {uploadingAvatar ? "…" : "📷"}
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              aria-label="Upload avatar image"
-              disabled={uploadingAvatar}
-              style={{ display: "none" }}
-              onChange={handleAvatarUpload}
-            />
-          </label>
+            {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change Avatar" : "Upload Avatar"}
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            aria-label="Upload avatar image"
+            disabled={uploadingAvatar}
+            style={{ display: "none" }}
+            onChange={handleAvatarUpload}
+          />
         </div>
 
         {/* Display name + upload hint */}

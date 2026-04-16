@@ -350,6 +350,11 @@ body {
   text-align: center;
 }
 
+/* Avatar upload button hover — shows camera overlay on hover */
+.avatar-upload-btn:hover .avatar-upload-overlay {
+  opacity: 1 !important;
+}
+
 .fp-display-name {
   font-weight: bold;
   font-size: 15px;
