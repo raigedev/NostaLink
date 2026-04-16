@@ -487,6 +487,7 @@ function AvatarInlineForm({ profile, onApply, onCancel }: FormProps) {
               ref={avatarInputRef}
               type="file"
               accept="image/*"
+              aria-label="Upload avatar image"
               style={{ display: "none" }}
               onChange={handleAvatarUpload}
             />

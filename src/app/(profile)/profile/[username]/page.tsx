@@ -10,7 +10,7 @@ import ShoutboxWidget from "@/components/profile/widgets/ShoutboxWidget";
 import Top8FriendsWidget from "@/components/profile/widgets/Top8FriendsWidget";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
-import { degreesLabel, formatRelationshipStatus } from "@/lib/utils";
+import { degreesLabel, formatRelationshipStatus, safeCssUrl } from "@/lib/utils";
 import Link from "next/link";
 import AddFriendButton from "@/components/profile/AddFriendButton";
 import SendMessageButton from "@/components/profile/SendMessageButton";
@@ -121,10 +121,10 @@ export default async function ProfilePage({ params }: Props) {
 
   const avatarNode = (
     <div className="fp-avatar-box">
-      {profile.cover_url && /^https?:\/\/[^\s"')]+$/.test(profile.cover_url) && (
+      {safeCssUrl(profile.cover_url) && (
         <div
           className="fp-cover-photo"
-          style={{ backgroundImage: `url(${profile.cover_url})` }}
+          style={{ backgroundImage: `url(${safeCssUrl(profile.cover_url)})` }}
         />
       )}
       <div className="fp-avatar-img">

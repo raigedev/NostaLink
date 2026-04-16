@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import type { Profile } from "@/app/actions/profile";
 import { getTheme } from "@/lib/themes";
 import { getFont, getFontUrl } from "@/lib/fonts";
-import { formatRelationshipStatus } from "@/lib/utils";
+import { formatRelationshipStatus, safeCssUrl } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import MusicPlayer from "./MusicPlayer";
 import ProfileSections from "./ProfileSections";
@@ -191,10 +191,10 @@ export default function ProfilePreviewPanel({
       node: wrapSection(
         LAYOUT_IDS.AVATAR_BOX,
         <div className="fp-avatar-box">
-          {p.cover_url && /^https?:\/\/[^\s"')]+$/.test(p.cover_url) && (
+          {safeCssUrl(p.cover_url) && (
             <div
               className="fp-cover-photo"
-              style={{ backgroundImage: `url(${p.cover_url})` }}
+              style={{ backgroundImage: `url(${safeCssUrl(p.cover_url)})` }}
             />
           )}
           <div className="fp-avatar-img">
